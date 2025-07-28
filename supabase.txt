@@ -1,0 +1,10 @@
+我的supabase数据库的project ID叫zuoyepigai：
+Project URL：
+https://auoflshbrysbhqmnapjp.supabase.co
+
+API Key anon public：eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF1b2Zsc2hicnlzYmhxbW5hcGpwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2OTUyMjQsImV4cCI6MjA2OTI3MTIyNH0.RE-KpbFjeEF2IUW8BSCzSnnGnKAiBPGGl6MIV7QYea4
+
+
+
+我的github的仓库地址是：https://github.com/dufutaoraul/pigaizuoye.git
+我要部署到netlify上。
