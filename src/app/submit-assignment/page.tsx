@@ -41,18 +41,18 @@ export default function SubmitAssignmentPage() {
     }
   };
 
-  // 获取所有可用的天数
+  // 获取所有可用的天数 - 兼容当前数据库结构
   useEffect(() => {
     const fetchAvailableDays = async () => {
       try {
         const { data, error } = await supabase
           .from('assignments')
-          .select('day_text')
-          .not('day_text', 'is', null);
+          .select('day_number')
+          .not('day_number', 'is', null);
         
         if (data) {
-          const uniqueDays = [...new Set(data.map(item => item.day_text))].sort();
-          setAvailableDays(uniqueDays);
+          const uniqueDays = [...new Set(data.map(item => item.day_number))].sort();
+          setAvailableDays(uniqueDays.map(day => `第${day}天`));
         }
       } catch (error) {
         console.error('Error fetching available days:', error);
@@ -62,18 +62,21 @@ export default function SubmitAssignmentPage() {
     fetchAvailableDays();
   }, []);
 
-  // 根据选择的天数查询作业列表
+  // 根据选择的天数查询作业列表 - 兼容当前数据库
   const handleDayTextChange = async (dayText: string) => {
     setSelectedDayText(dayText);
     setAssignmentId('');
     setSelectedAssignment(null);
     
     if (dayText) {
+      // 从"第X天"提取数字
+      const dayNumber = parseInt(dayText.replace(/[^0-9]/g, ''));
+      
       try {
         const { data, error } = await supabase
           .from('assignments')
           .select('*')
-          .eq('day_text', dayText);
+          .eq('day_number', dayNumber);
         
         if (data) {
           setAssignments(data);

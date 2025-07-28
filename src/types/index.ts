@@ -5,11 +5,12 @@ export interface Student {
 
 export interface Assignment {
   assignment_id: string;
-  day_text: string;  // 使用原始格式如"第一周第一天"
+  day_text?: string;  // 新格式：原始格式如"第一周第一天"
+  day_number?: number; // 旧格式：兼容性支持
   assignment_title: string;
   is_mandatory: boolean;
   description: string;
-  assignment_category: string;
+  assignment_category?: string;
 }
 
 export interface Submission {
