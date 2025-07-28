@@ -78,20 +78,19 @@ async function checkGraduationDirectly(studentId: string) {
   try {
     const sb = await getSupabase();
     
-    // 1. 获取所有必做作业
-    const { data: mandatoryAssignments, error: assignmentError } = await sb
-      .from('assignments')
-      .select('assignment_id, assignment_title, day_number')
-      .eq('is_mandatory', true);
-
-    if (assignmentError) {
-      throw assignmentError;
-    }
-
-    // 2. 获取该学员所有合格的作业提交
+    // 1. 获取该学员所有合格的作业提交及其分类信息
     const { data: qualifiedSubmissions, error: submissionError } = await sb
       .from('submissions')
-      .select('assignment_id, assignment:assignments(assignment_title)')
+      .select(`
+        assignment_id, 
+        assignments!inner(
+          assignment_id,
+          assignment_title,
+          is_mandatory,
+          assignment_category,
+          day_number
+        )
+      `)
       .eq('student_id', studentId)
       .eq('status', '合格');
 
@@ -99,32 +98,86 @@ async function checkGraduationDirectly(studentId: string) {
       throw submissionError;
     }
 
-    // 3. 分析毕业资格
-    const totalMandatory = mandatoryAssignments?.length || 0;
-    const completedMandatoryIds = new Set(
-      qualifiedSubmissions?.map((s: any) => s.assignment_id) || []
-    );
-    const completedMandatory = mandatoryAssignments?.filter(
-      (assignment: any) => completedMandatoryIds.has(assignment.assignment_id)
-    ).length || 0;
+    // 2. 获取所有作业信息
+    const { data: allAssignments, error: assignmentError } = await sb
+      .from('assignments')
+      .select('assignment_id, assignment_title, is_mandatory, assignment_category, day_number');
 
-    // 4. 找出未完成的必做作业
-    const pendingAssignments = mandatoryAssignments?.filter(
-      (assignment: any) => !completedMandatoryIds.has(assignment.assignment_id)
-    ).map((assignment: any) => `第${assignment.day_number}天: ${assignment.assignment_title}`) || [];
+    if (assignmentError) {
+      throw assignmentError;
+    }
 
-    // 5. 判断是否符合毕业条件
-    const qualified = completedMandatory === totalMandatory;
+    // 3. 分析毕业资格 - 三个标准
+    const qualifiedIds = new Set(qualifiedSubmissions?.map((s: any) => s.assignment_id) || []);
+    
+    // 标准一：检查所有必做作业是否全部合格
+    const mandatoryAssignments = allAssignments?.filter((a: any) => a.is_mandatory) || [];
+    const completedMandatory = mandatoryAssignments.filter((a: any) => qualifiedIds.has(a.assignment_id));
+    const standard1Pass = completedMandatory.length === mandatoryAssignments.length;
+    
+    // 标准二：检查"第一周第二天下午"的四个选做作业中至少有1个合格
+    const w1d2AfternoonAssignments = allAssignments?.filter((a: any) => 
+      a.assignment_category === 'W1D2_Afternoon_Optional'
+    ) || [];
+    const completedW1D2Afternoon = w1d2AfternoonAssignments.filter((a: any) => qualifiedIds.has(a.assignment_id));
+    const standard2Pass = completedW1D2Afternoon.length >= 1;
+    
+    // 标准三：检查除"第一周第二天下午"外的所有其他"选做"作业中至少有1个合格
+    const otherOptionalAssignments = allAssignments?.filter((a: any) => 
+      !a.is_mandatory && a.assignment_category !== 'W1D2_Afternoon_Optional'
+    ) || [];
+    const completedOtherOptional = otherOptionalAssignments.filter((a: any) => qualifiedIds.has(a.assignment_id));
+    const standard3Pass = completedOtherOptional.length >= 1;
+    
+    // 最终判断：三个标准全部满足才能毕业
+    const qualified = standard1Pass && standard2Pass && standard3Pass;
+    
+    // 生成详细反馈信息
+    let message = '';
+    let reasons = [];
+    
+    if (qualified) {
+      message = '恭喜您，已满足所有毕业条件！您可以联系管理员申请毕业证书。';
+    } else {
+      if (!standard1Pass) {
+        const pendingMandatory = mandatoryAssignments.filter((a: any) => !qualifiedIds.has(a.assignment_id));
+        reasons.push(`必做作业未全部完成，还需完成：${pendingMandatory.map((a: any) => a.assignment_title).join('、')}`);
+      }
+      if (!standard2Pass) {
+        reasons.push(`"第一周第二天下午"的特定选做作业需要至少完成1个（${w1d2AfternoonAssignments.map((a: any) => a.assignment_title).join('、')}）`);
+      }
+      if (!standard3Pass) {
+        reasons.push('其他选做作业需要至少完成1个');
+      }
+      
+      message = `尚未满足毕业条件。原因：${reasons.join('；')}。`;
+    }
 
     return {
       qualified,
-      message: qualified 
-        ? '恭喜您，已满足所有毕业条件！您可以联系管理员申请毕业证书。'
-        : `尚未满足毕业条件。您还需要完成 ${totalMandatory - completedMandatory} 个必做作业。`,
+      message,
       details: {
-        totalMandatory,
-        completedMandatory,
-        pendingAssignments
+        standard1: {
+          name: '必做作业标准',
+          pass: standard1Pass,
+          completed: completedMandatory.length,
+          total: mandatoryAssignments.length,
+          pending: mandatoryAssignments.filter((a: any) => !qualifiedIds.has(a.assignment_id)).map((a: any) => a.assignment_title)
+        },
+        standard2: {
+          name: '第一周第二天下午选做作业标准',
+          pass: standard2Pass,
+          completed: completedW1D2Afternoon.length,
+          required: 1,
+          available: w1d2AfternoonAssignments.map((a: any) => a.assignment_title)
+        },
+        standard3: {
+          name: '其他选做作业标准',
+          pass: standard3Pass,
+          completed: completedOtherOptional.length,
+          required: 1,
+          available: otherOptionalAssignments.length
+        }
       }
     };
 

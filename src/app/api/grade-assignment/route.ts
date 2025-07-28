@@ -84,7 +84,7 @@ async function gradeWithDouBaoAI(attachmentUrls: string[], assignmentId: string)
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'doubao-vision',
+        model: 'ep-20250524195324-l4t8t',
         messages: [
           {
             role: 'system',
