@@ -16,7 +16,8 @@
       "mcp__ide__executeCode",
       "mcp__ide__getDiagnostics",
       "Bash(claude mcp add:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(npm run dev:*)"
     ],
     "deny": []
   }

@@ -17,6 +17,8 @@ export default function SubmitAssignmentPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [gradingResult, setGradingResult] = useState<{status: string, feedback: string} | null>(null);
+  const [showResult, setShowResult] = useState(false);
 
   // 根据学号查询学员姓名
   const handleStudentIdChange = async (id: string) => {
@@ -97,6 +99,52 @@ export default function SubmitAssignmentPage() {
     }
   };
 
+  // 轮询检查批改结果
+  const pollGradingResult = async (studentId: string, assignmentId: string) => {
+    const maxAttempts = 30; // 最多轮询30次 (约3分钟)
+    let attempts = 0;
+    
+    const checkResult = async (): Promise<void> => {
+      try {
+        const { data, error } = await supabase
+          .from('submissions')
+          .select('status, feedback')
+          .eq('student_id', studentId)
+          .eq('assignment_id', assignmentId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (error) throw error;
+        
+        if (data && data.status !== '批改中') {
+          // 批改完成
+          setGradingResult({
+            status: data.status,
+            feedback: data.feedback || '批改完成'
+          });
+          setShowResult(true);
+          setMessage(`批改完成！结果：${data.status}`);
+          return;
+        }
+        
+        // 如果还在批改中，继续轮询
+        attempts++;
+        if (attempts < maxAttempts) {
+          setTimeout(() => checkResult(), 6000); // 6秒后再次检查
+        } else {
+          setMessage('批改超时，请稍后查看结果');
+        }
+      } catch (error) {
+        console.error('Error polling grading result:', error);
+        setMessage('检查批改结果时出错');
+      }
+    };
+    
+    // 开始轮询
+    setTimeout(() => checkResult(), 6000); // 6秒后开始第一次检查
+  };
+
   // 提交作业
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,13 +208,8 @@ export default function SubmitAssignmentPage() {
 
       setMessage('作业提交成功！正在进行AI批改...');
       
-      // 重置表单
-      setStudentId('');
-      setStudentName('');
-      setSelectedDayText('');
-      setAssignmentId('');
-      setSelectedAssignment(null);
-      setFiles([]);
+      // 开始轮询检查批改结果
+      await pollGradingResult(studentId, assignmentId);
       
     } catch (error) {
       console.error('Error submitting assignment:', error);
@@ -328,11 +371,70 @@ export default function SubmitAssignmentPage() {
             {/* 消息显示 */}
             {message && (
               <div className={`mt-4 p-4 rounded-md ${
-                message.includes('成功') 
+                message.includes('成功') || message.includes('完成')
                   ? 'bg-green-100 text-green-800' 
                   : 'bg-red-100 text-red-800'
               }`}>
                 {message}
+              </div>
+            )}
+
+            {/* 批改结果显示 */}
+            {showResult && gradingResult && (
+              <div className="mt-6 p-6 bg-white rounded-lg shadow-md border-2 border-blue-200">
+                <h3 className="text-xl font-bold mb-4 text-center">
+                  AI批改结果
+                </h3>
+                
+                <div className="space-y-4">
+                  {/* 批改状态 */}
+                  <div className="text-center">
+                    <span className={`inline-block px-6 py-3 rounded-full text-lg font-bold ${
+                      gradingResult.status === '合格' 
+                        ? 'bg-green-500 text-white' 
+                        : gradingResult.status === '不合格'
+                        ? 'bg-red-500 text-white'
+                        : 'bg-yellow-500 text-white'
+                    }`}>
+                      {gradingResult.status}
+                    </span>
+                  </div>
+                  
+                  {/* 批改反馈 */}
+                  <div className="bg-gray-50 p-4 rounded-md">
+                    <h4 className="font-medium text-gray-700 mb-2">批改反馈：</h4>
+                    <div className="text-gray-600 whitespace-pre-wrap">
+                      {gradingResult.feedback}
+                    </div>
+                  </div>
+                  
+                  {/* 操作按钮 */}
+                  <div className="flex gap-4 justify-center mt-6">
+                    <button
+                      onClick={() => {
+                        setShowResult(false);
+                        setGradingResult(null);
+                        setMessage('');
+                        // 重置表单
+                        setStudentId('');
+                        setStudentName('');
+                        setSelectedDayText('');
+                        setAssignmentId('');
+                        setSelectedAssignment(null);
+                        setFiles([]);
+                      }}
+                      className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    >
+                      提交新作业
+                    </button>
+                    <Link
+                      href="/my-assignments"
+                      className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                    >
+                      查看我的作业
+                    </Link>
+                  </div>
+                </div>
               </div>
             )}
           </div>
