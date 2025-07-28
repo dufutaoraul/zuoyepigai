@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { Student, Assignment } from '@/types';
+import { getUniqueDayTexts, getAssignmentsByDayText, getDayTextFromAssignment } from '@/utils/day-text-utils';
 
 export default function SubmitAssignmentPage() {
   const [studentId, setStudentId] = useState('');
@@ -41,19 +42,13 @@ export default function SubmitAssignmentPage() {
     }
   };
 
-  // 获取所有可用的天数 - 兼容当前数据库结构
+  // 获取所有可用的天数 - 使用正确的Excel格式
   useEffect(() => {
     const fetchAvailableDays = async () => {
       try {
-        const { data, error } = await supabase
-          .from('assignments')
-          .select('day_number')
-          .not('day_number', 'is', null);
-        
-        if (data) {
-          const uniqueDays = [...new Set(data.map(item => item.day_number))].sort();
-          setAvailableDays(uniqueDays.map(day => `第${day}天`));
-        }
+        // 使用工具函数获取正确排序的天数文本
+        const uniqueDayTexts = getUniqueDayTexts();
+        setAvailableDays(uniqueDayTexts);
       } catch (error) {
         console.error('Error fetching available days:', error);
       }
@@ -62,24 +57,22 @@ export default function SubmitAssignmentPage() {
     fetchAvailableDays();
   }, []);
 
-  // 根据选择的天数查询作业列表 - 兼容当前数据库
+  // 根据选择的天数查询作业列表 - 使用正确的Excel格式
   const handleDayTextChange = async (dayText: string) => {
     setSelectedDayText(dayText);
     setAssignmentId('');
     setSelectedAssignment(null);
     
     if (dayText) {
-      // 从"第X天"提取数字
-      const dayNumber = parseInt(dayText.replace(/[^0-9]/g, ''));
-      
       try {
         const { data, error } = await supabase
           .from('assignments')
-          .select('*')
-          .eq('day_number', dayNumber);
+          .select('*');
         
         if (data) {
-          setAssignments(data);
+          // 使用工具函数根据天数文本过滤作业
+          const filteredAssignments = getAssignmentsByDayText(dayText, data);
+          setAssignments(filteredAssignments);
         }
       } catch (error) {
         console.error('Error fetching assignments:', error);

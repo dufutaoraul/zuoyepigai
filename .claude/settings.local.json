@@ -15,7 +15,8 @@
       "Bash(start manual-setup.html)",
       "mcp__ide__executeCode",
       "mcp__ide__getDiagnostics",
-      "Bash(claude mcp add:*)"
+      "Bash(claude mcp add:*)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }

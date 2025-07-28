@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { Submission, Assignment } from '@/types';
+import { getDayTextFromAssignment } from '@/utils/day-text-utils';
 
 interface SubmissionWithAssignment extends Submission {
   assignment: Assignment;
@@ -201,7 +202,7 @@ export default function MyAssignmentsPage() {
                         {submission.assignment.assignment_title}
                       </h3>
                       <div className="space-y-1 text-sm text-gray-600">
-                        <p>{submission.assignment.day_text || `第${submission.assignment.day_number}天` || '未知天数'}</p>
+                        <p>{getDayTextFromAssignment(submission.assignment)}</p>
                         <p>提交时间: {formatDate(submission.submission_date)}</p>
                         <p>
                           类型: 
