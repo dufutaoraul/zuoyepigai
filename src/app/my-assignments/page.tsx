@@ -80,7 +80,7 @@ export default function MyAssignmentsPage() {
       const { error: updateError } = await supabase
         .from('submissions')
         .update({
-          attachments_url: attachmentUrls,
+          attachments_urls: attachmentUrls,
           status: '批改中',
           feedback: null
         })
@@ -236,7 +236,7 @@ export default function MyAssignmentsPage() {
                   <div className="mb-4">
                     <p className="text-sm font-medium text-gray-700 mb-2">已提交附件:</p>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                      {submission.attachments_url.map((url, index) => (
+                      {submission.attachments_urls.map((url, index) => (
                         <a
                           key={index}
                           href={url}
