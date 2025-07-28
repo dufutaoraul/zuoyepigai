@@ -1,0 +1,11 @@
+# Netlify环境变量配置
+# 复制以下内容到Netlify的Environment Variables中
+
+# Supabase配置 (必需)
+NEXT_PUBLIC_SUPABASE_URL=https://auoflshbrysbhqmnapjp.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF1b2Zsc2hicnlzYmhxbW5hcGpwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2OTUyMjQsImV4cCI6MjA2OTI3MTIyNH0.RE-KpbFjeEF2IUW8BSCzSnnGnKAiBPGGl6MIV7QYea4
+
+# AI服务配置 (可选 - 如有API密钥请配置)
+# DOUBAO_API_KEY=your_doubao_api_key_here
+# DIFY_API_KEY=your_dify_api_key_here  
+# DIFY_WORKFLOW_URL=your_dify_workflow_url_here
