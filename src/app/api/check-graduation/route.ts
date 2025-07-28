@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+
+// 延迟导入supabase以避免构建时错误
+let supabase: any = null;
+
+const getSupabase = async () => {
+  if (!supabase) {
+    const { supabase: sb } = await import('@/lib/supabase');
+    supabase = sb;
+  }
+  return supabase;
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -66,8 +76,10 @@ async function checkGraduationWithDify(studentId: string) {
 
 async function checkGraduationDirectly(studentId: string) {
   try {
+    const sb = await getSupabase();
+    
     // 1. 获取所有必做作业
-    const { data: mandatoryAssignments, error: assignmentError } = await supabase
+    const { data: mandatoryAssignments, error: assignmentError } = await sb
       .from('assignments')
       .select('assignment_id, assignment_title, day_number')
       .eq('is_mandatory', true);
@@ -77,7 +89,7 @@ async function checkGraduationDirectly(studentId: string) {
     }
 
     // 2. 获取该学员所有合格的作业提交
-    const { data: qualifiedSubmissions, error: submissionError } = await supabase
+    const { data: qualifiedSubmissions, error: submissionError } = await sb
       .from('submissions')
       .select('assignment_id, assignment:assignments(assignment_title)')
       .eq('student_id', studentId)
@@ -90,16 +102,16 @@ async function checkGraduationDirectly(studentId: string) {
     // 3. 分析毕业资格
     const totalMandatory = mandatoryAssignments?.length || 0;
     const completedMandatoryIds = new Set(
-      qualifiedSubmissions?.map(s => s.assignment_id) || []
+      qualifiedSubmissions?.map((s: any) => s.assignment_id) || []
     );
     const completedMandatory = mandatoryAssignments?.filter(
-      assignment => completedMandatoryIds.has(assignment.assignment_id)
+      (assignment: any) => completedMandatoryIds.has(assignment.assignment_id)
     ).length || 0;
 
     // 4. 找出未完成的必做作业
     const pendingAssignments = mandatoryAssignments?.filter(
-      assignment => !completedMandatoryIds.has(assignment.assignment_id)
-    ).map(assignment => `第${assignment.day_number}天: ${assignment.assignment_title}`) || [];
+      (assignment: any) => !completedMandatoryIds.has(assignment.assignment_id)
+    ).map((assignment: any) => `第${assignment.day_number}天: ${assignment.assignment_title}`) || [];
 
     // 5. 判断是否符合毕业条件
     const qualified = completedMandatory === totalMandatory;

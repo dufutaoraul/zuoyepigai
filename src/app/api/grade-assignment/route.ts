@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+
+// 延迟导入supabase以避免构建时错误
+let supabase: any = null;
+
+const getSupabase = async () => {
+  if (!supabase) {
+    const { supabase: sb } = await import('@/lib/supabase');
+    supabase = sb;
+  }
+  return supabase;
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +23,8 @@ export async function POST(request: NextRequest) {
     const gradingResult = await gradeWithDouBaoAI(attachmentUrls, assignmentId);
 
     // 更新数据库中的批改结果
-    const { error } = await supabase
+    const sb = await getSupabase();
+    const { error } = await sb
       .from('submissions')
       .update({
         status: gradingResult.status,
@@ -41,7 +52,8 @@ export async function POST(request: NextRequest) {
 async function gradeWithDouBaoAI(attachmentUrls: string[], assignmentId: string) {
   try {
     // 获取作业要求
-    const { data: assignment } = await supabase
+    const sb = await getSupabase();
+    const { data: assignment } = await sb
       .from('assignments')
       .select('description, assignment_title')
       .eq('assignment_id', assignmentId)
