@@ -153,6 +153,8 @@ export default function MyAssignmentsPage() {
         return 'bg-red-100 text-red-800';
       case '批改中':
         return 'bg-yellow-100 text-yellow-800';
+      case '批改失败':
+        return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -308,69 +310,69 @@ export default function MyAssignmentsPage() {
 
                   {/* 操作按钮 */}
                   <div className="border-t pt-4">
+                    {/* 重新提交功能 */}
+                    {(submission.status === '不合格' || submission.status === '批改失败') && editingSubmission === submission.submission_id && (
+                      <div className="mb-4 space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            重新上传附件
+                          </label>
+                          <input
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            onChange={(e) => setNewFiles(e.target.files ? Array.from(e.target.files) : [])}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        
+                        {newFiles.length > 0 && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-700 mb-2">新选择的文件:</p>
+                            <ul className="space-y-1">
+                              {newFiles.map((file, index) => (
+                                <li key={index} className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                                  {file.name}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleResubmit(submission.submission_id)}
+                            disabled={loading || newFiles.length === 0}
+                            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {loading ? '提交中...' : '确认重新提交'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingSubmission(null);
+                              setNewFiles([]);
+                            }}
+                            className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                          >
+                            取消
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* 操作按钮行 */}
                     <div className="flex gap-2 flex-wrap">
-                      {/* 重新提交功能 */}
-                      {submission.status === '不合格' && (
-                        <>
-                          {editingSubmission === submission.submission_id ? (
-                            <div className="w-full space-y-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  重新上传附件
-                                </label>
-                                <input
-                                  type="file"
-                                  multiple
-                                  accept="image/*"
-                                  onChange={(e) => setNewFiles(e.target.files ? Array.from(e.target.files) : [])}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                              </div>
-                              
-                              {newFiles.length > 0 && (
-                                <div>
-                                  <p className="text-sm font-medium text-gray-700 mb-2">新选择的文件:</p>
-                                  <ul className="space-y-1">
-                                    {newFiles.map((file, index) => (
-                                      <li key={index} className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                                        {file.name}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                              
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => handleResubmit(submission.submission_id)}
-                                  disabled={loading || newFiles.length === 0}
-                                  className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  {loading ? '提交中...' : '确认重新提交'}
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setEditingSubmission(null);
-                                    setNewFiles([]);
-                                  }}
-                                  className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                                >
-                                  取消
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setEditingSubmission(submission.submission_id)}
-                              className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                            >
-                              重新提交
-                            </button>
-                          )}
-                        </>
+                      {/* 重新提交按钮 - 仅当状态为不合格或批改失败且未在编辑时显示 */}
+                      {(submission.status === '不合格' || submission.status === '批改失败') && editingSubmission !== submission.submission_id && (
+                        <button
+                          onClick={() => setEditingSubmission(submission.submission_id)}
+                          className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        >
+                          重新提交
+                        </button>
                       )}
                       
-                      {/* 删除按钮 */}
+                      {/* 删除按钮 - 始终显示 */}
                       <button
                         onClick={() => handleDeleteSubmission(submission.submission_id)}
                         disabled={deletingSubmission === submission.submission_id || editingSubmission === submission.submission_id}

@@ -151,10 +151,10 @@ async function gradeWithDouBaoAI(attachmentUrls: string[], assignmentId: string)
 
   } catch (error) {
     console.error('DouBao AI grading error:', error);
-    // 出错时返回默认结果
+    // 出错时返回错误状态，避免无限等待
     return {
-      status: '批改中',
-      feedback: '批改过程中出现错误，请联系管理员'
+      status: '批改失败',
+      feedback: '批改过程中出现错误，请重新提交或联系管理员'
     };
   }
 }

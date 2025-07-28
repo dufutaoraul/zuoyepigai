@@ -148,13 +148,17 @@ export default function SubmitAssignmentPage() {
         if (error) throw error;
         
         if (data && data.status !== '批改中') {
-          // 批改完成
+          // 批改完成或失败
           setGradingResult({
             status: data.status,
             feedback: data.feedback || '批改完成'
           });
           setShowResult(true);
-          setMessage(`批改完成！结果：${data.status}`);
+          if (data.status === '批改失败') {
+            setMessage(`批改失败：${data.feedback}`);
+          } else {
+            setMessage(`批改完成！结果：${data.status}`);
+          }
           return;
         }
         
@@ -237,7 +241,7 @@ export default function SubmitAssignmentPage() {
         console.error('Error triggering AI grading:', error);
       }
 
-      setMessage('作业提交成功！正在进行AI批改，大概需要2-3分钟时间，请耐心等待...');
+      setMessage('作业提交成功！正在进行AI批改，大概需要2-3分钟时间，请耐心等待。您可以返回首页继续提交其他作业，或查看已有作业记录。');
       
       // 开始轮询检查批改结果
       await pollGradingResult(studentId, assignmentId);
@@ -407,6 +411,24 @@ export default function SubmitAssignmentPage() {
                   : 'bg-red-100 text-red-800'
               }`}>
                 {message}
+                
+                {/* 在等待批改时显示操作按钮 */}
+                {message.includes('正在进行AI批改') && (
+                  <div className="flex gap-3 mt-4">
+                    <Link
+                      href="/"
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+                    >
+                      返回首页
+                    </Link>
+                    <Link
+                      href={`/my-assignments?studentId=${encodeURIComponent(studentId)}`}
+                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
+                    >
+                      查看我的作业
+                    </Link>
+                  </div>
+                )}
               </div>
             )}
 
@@ -425,6 +447,8 @@ export default function SubmitAssignmentPage() {
                         ? 'bg-green-500 text-white' 
                         : gradingResult.status === '不合格'
                         ? 'bg-red-500 text-white'
+                        : gradingResult.status === '批改失败'
+                        ? 'bg-gray-500 text-white'
                         : 'bg-yellow-500 text-white'
                     }`}>
                       {gradingResult.status}

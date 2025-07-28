@@ -69,35 +69,47 @@ export function getDayTextFromAssignment(assignment: any): string {
   return assignment.day_number ? `第${assignment.day_number}天` : '未知天数';
 }
 
-// 为下拉列表获取所有唯一的天数文本（按顺序）
+// 为下拉列表获取所有唯一的天数文本（按时间顺序）
 export function getUniqueDayTexts(): string[] {
   const dayTexts = Object.values(assignmentDayMapping);
   const uniqueDayTexts = [...new Set(dayTexts)];
   
-  // 简单排序：先按周，再按天
+  // 定义正确的时间顺序
+  const timeOrder = [
+    '第一周第一天',
+    '第一周第二天上午', 
+    '第一周第二天下午',
+    '第一周第三天',
+    '第一周第四天',
+    '第一周第五天上午',
+    '第一周第五天下午', 
+    '第一周第六天',
+    '第一周第七天上午',
+    '第一周第七天下午',
+    '第二周第一天上午',
+    '第二周第一天下午',
+    '第二周第二天',
+    '第二周第三天',
+    '第二周第四天',
+    '第二周第五天',
+    '第二周第六天'
+  ];
+  
+  // 按预定义顺序排序
   return uniqueDayTexts.sort((a, b) => {
-    const aWeek = a.includes('第一周') ? 1 : 2;
-    const bWeek = b.includes('第一周') ? 1 : 2;
+    const aIndex = timeOrder.indexOf(a);
+    const bIndex = timeOrder.indexOf(b);
     
-    if (aWeek !== bWeek) return aWeek - bWeek;
-    
-    // 在同一周内按天数排序
-    const aDayMatch = a.match(/第(.*?)天/);
-    const bDayMatch = b.match(/第(.*?)天/);
-    
-    if (aDayMatch && bDayMatch) {
-      const aDayNumber = aDayMatch[1];
-      const bDayNumber = bDayMatch[1];
-      
-      const dayOrder = ['一', '二', '三', '四', '五', '六', '七'];
-      const aIndex = dayOrder.indexOf(aDayNumber);
-      const bIndex = dayOrder.indexOf(bDayNumber);
-      
-      if (aIndex !== -1 && bIndex !== -1) {
-        return aIndex - bIndex;
-      }
+    // 如果都在预定义列表中，按索引排序
+    if (aIndex !== -1 && bIndex !== -1) {
+      return aIndex - bIndex;
     }
     
+    // 如果只有一个在预定义列表中，优先显示
+    if (aIndex !== -1) return -1;
+    if (bIndex !== -1) return 1;
+    
+    // 都不在预定义列表中，按字符串排序
     return a.localeCompare(b);
   });
 }
