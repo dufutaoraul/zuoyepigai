@@ -99,6 +99,19 @@ export default function SubmitAssignmentPage() {
     }
   };
 
+  // 清理文件名 - 移除中文字符、空格和特殊字符
+  const sanitizeFileName = (originalName: string): string => {
+    // 获取文件扩展名
+    const extension = originalName.split('.').pop() || '';
+    // 移除扩展名后的文件名
+    const nameWithoutExt = originalName.replace(`.${extension}`, '');
+    // 只保留英文字母、数字、连字符和下划线
+    const cleanName = nameWithoutExt.replace(/[^a-zA-Z0-9\-_]/g, '');
+    // 如果清理后为空，使用默认名称
+    const finalName = cleanName || 'file';
+    return `${finalName}.${extension}`;
+  };
+
   // 轮询检查批改结果
   const pollGradingResult = async (studentId: string, assignmentId: string) => {
     const maxAttempts = 30; // 最多轮询30次 (约3分钟)
@@ -162,7 +175,8 @@ export default function SubmitAssignmentPage() {
       const attachmentUrls: string[] = [];
       
       for (const file of files) {
-        const fileName = `${Date.now()}-${file.name}`;
+        const cleanFileName = sanitizeFileName(file.name);
+        const fileName = `${Date.now()}-${cleanFileName}`;
         const { data, error } = await supabase.storage
           .from('assignments')
           .upload(fileName, file);
