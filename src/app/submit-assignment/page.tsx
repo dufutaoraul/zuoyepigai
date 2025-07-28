@@ -135,7 +135,7 @@ export default function SubmitAssignmentPage() {
           student_id: studentId,
           assignment_id: assignmentId,
           submission_date: new Date().toISOString(),
-          attachment_urls: JSON.stringify(attachmentUrls),
+          attachments_url: JSON.stringify(attachmentUrls),
           status: '批改中'
         });
 
