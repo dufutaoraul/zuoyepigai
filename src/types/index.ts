@@ -18,7 +18,7 @@ export interface Submission {
   student_id: string;
   assignment_id: string;
   submission_date: string;
-  attachments_url: string[];
+  attachment_urls: string[];
   status: '批改中' | '合格' | '不合格';
   feedback?: string;
 }
