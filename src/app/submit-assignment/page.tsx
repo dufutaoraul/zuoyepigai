@@ -9,6 +9,7 @@ import { getUniqueDayTexts, getAssignmentsByDayText, getDayTextFromAssignment } 
 export default function SubmitAssignmentPage() {
   const [studentId, setStudentId] = useState('');
   const [studentName, setStudentName] = useState('');
+  const [studentIdFromStorage, setStudentIdFromStorage] = useState('');
   const [selectedDayText, setSelectedDayText] = useState('');
   const [assignmentId, setAssignmentId] = useState('');
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
@@ -20,23 +21,39 @@ export default function SubmitAssignmentPage() {
   const [gradingResult, setGradingResult] = useState<{status: string, feedback: string} | null>(null);
   const [showResult, setShowResult] = useState(false);
 
+  // 初始化时从localStorage读取学号
+  useEffect(() => {
+    const savedStudentId = localStorage.getItem('lastStudentId');
+    if (savedStudentId) {
+      setStudentIdFromStorage(savedStudentId);
+      setStudentId(savedStudentId);
+      handleStudentIdChange(savedStudentId);
+    }
+  }, []);
+
   // 根据学号查询学员姓名
   const handleStudentIdChange = async (id: string) => {
     setStudentId(id);
     if (id.length > 0) {
       try {
+        // 清除之前的姓名，避免显示旧数据
+        setStudentName('');
+        
         const { data, error } = await supabase
           .from('students')
           .select('student_name')
           .eq('student_id', id)
           .single();
         
-        if (data) {
+        if (data && !error) {
           setStudentName(data.student_name);
+          // 保存到localStorage
+          localStorage.setItem('lastStudentId', id);
         } else {
           setStudentName('');
         }
       } catch (error) {
+        console.error('Error fetching student name:', error);
         setStudentName('');
       }
     } else {
@@ -220,7 +237,7 @@ export default function SubmitAssignmentPage() {
         console.error('Error triggering AI grading:', error);
       }
 
-      setMessage('作业提交成功！正在进行AI批改...');
+      setMessage('作业提交成功！正在进行AI批改，大概需要2-3分钟时间，请耐心等待...');
       
       // 开始轮询检查批改结果
       await pollGradingResult(studentId, assignmentId);
@@ -429,9 +446,7 @@ export default function SubmitAssignmentPage() {
                         setShowResult(false);
                         setGradingResult(null);
                         setMessage('');
-                        // 重置表单
-                        setStudentId('');
-                        setStudentName('');
+                        // 重置表单但保留学号和姓名
                         setSelectedDayText('');
                         setAssignmentId('');
                         setSelectedAssignment(null);
@@ -442,7 +457,7 @@ export default function SubmitAssignmentPage() {
                       提交新作业
                     </button>
                     <Link
-                      href="/my-assignments"
+                      href={`/my-assignments?studentId=${encodeURIComponent(studentId)}`}
                       className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
                     >
                       查看我的作业

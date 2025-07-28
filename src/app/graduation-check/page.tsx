@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 export default function GraduationCheckPage() {
+  const searchParams = useSearchParams();
   const [studentId, setStudentId] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{
@@ -33,6 +35,19 @@ export default function GraduationCheckPage() {
       };
     };
   } | null>(null);
+
+  // 初始化时读取URL参数或localStorage
+  useEffect(() => {
+    const urlStudentId = searchParams.get('studentId');
+    const savedStudentId = localStorage.getItem('lastStudentId');
+    
+    if (urlStudentId) {
+      setStudentId(urlStudentId);
+      localStorage.setItem('lastStudentId', urlStudentId);
+    } else if (savedStudentId) {
+      setStudentId(savedStudentId);
+    }
+  }, [searchParams]);
 
   const handleCheck = async () => {
     if (!studentId) {
@@ -96,7 +111,10 @@ export default function GraduationCheckPage() {
                 <input
                   type="text"
                   value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
+                  onChange={(e) => {
+                    setStudentId(e.target.value);
+                    localStorage.setItem('lastStudentId', e.target.value);
+                  }}
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="请输入学号"
                 />
@@ -207,6 +225,11 @@ export default function GraduationCheckPage() {
                               </ul>
                             </div>
                           )}
+                          {!result.details.standard2.pass && (
+                            <div className="mt-2 text-sm text-red-600">
+                              ❌ 需要完成至少{result.details.standard2.required}个"第一周第二天下午"的选做作业
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -229,6 +252,11 @@ export default function GraduationCheckPage() {
                           <div className="text-xs text-gray-500 mt-1">
                             共有 {result.details.standard3.available} 个其他选做作业可选择
                           </div>
+                          {!result.details.standard3.pass && (
+                            <div className="mt-2 text-sm text-red-600">
+                              ❌ 需要完成至少{result.details.standard3.required}个其他选做作业
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

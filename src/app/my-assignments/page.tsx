@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { Submission, Assignment } from '@/types';
@@ -11,16 +12,39 @@ interface SubmissionWithAssignment extends Submission {
 }
 
 export default function MyAssignmentsPage() {
+  const searchParams = useSearchParams();
   const [studentId, setStudentId] = useState('');
   const [submissions, setSubmissions] = useState<SubmissionWithAssignment[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [editingSubmission, setEditingSubmission] = useState<string | null>(null);
   const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [deletingSubmission, setDeletingSubmission] = useState<string | null>(null);
+
+  // 初始化时读取URL参数或localStorage
+  useEffect(() => {
+    const urlStudentId = searchParams.get('studentId');
+    const savedStudentId = localStorage.getItem('lastStudentId');
+    
+    if (urlStudentId) {
+      setStudentId(urlStudentId);
+      localStorage.setItem('lastStudentId', urlStudentId);
+      // 自动查询
+      fetchSubmissionsWithId(urlStudentId);
+    } else if (savedStudentId) {
+      setStudentId(savedStudentId);
+      fetchSubmissionsWithId(savedStudentId);
+    }
+  }, [searchParams]);
 
   // 查询学员作业提交历史
   const fetchSubmissions = async () => {
     if (!studentId) return;
+    await fetchSubmissionsWithId(studentId);
+  };
+  
+  const fetchSubmissionsWithId = async (id: string) => {
+    if (!id) return;
     
     setLoading(true);
     try {
@@ -30,7 +54,7 @@ export default function MyAssignmentsPage() {
           *,
           assignment:assignments(*)
         `)
-        .eq('student_id', studentId)
+        .eq('student_id', id)
         .order('submission_date', { ascending: false });
 
       if (error) throw error;
@@ -108,7 +132,7 @@ export default function MyAssignmentsPage() {
         }
       }
 
-      setMessage('重新提交成功！正在进行AI批改...');
+      setMessage('重新提交成功！正在进行AI批改，大概需要2-3分钟时间，请耐心等待...');
       setEditingSubmission(null);
       setNewFiles([]);
       fetchSubmissions();
@@ -134,6 +158,31 @@ export default function MyAssignmentsPage() {
     }
   };
 
+  // 删除作业
+  const handleDeleteSubmission = async (submissionId: string) => {
+    if (!confirm('确定要删除这个作业提交记录吗？删除后无法恢复。')) {
+      return;
+    }
+    
+    setDeletingSubmission(submissionId);
+    try {
+      const { error } = await supabase
+        .from('submissions')
+        .delete()
+        .eq('submission_id', submissionId);
+        
+      if (error) throw error;
+      
+      setMessage('作业删除成功');
+      fetchSubmissions();
+    } catch (error) {
+      console.error('Error deleting submission:', error);
+      setMessage('删除失败，请重试');
+    } finally {
+      setDeletingSubmission(null);
+    }
+  };
+  
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('zh-CN');
   };
@@ -163,7 +212,10 @@ export default function MyAssignmentsPage() {
                 <input
                   type="text"
                   value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
+                  onChange={(e) => {
+                    setStudentId(e.target.value);
+                    localStorage.setItem('lastStudentId', e.target.value);
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="输入学号查询作业记录"
                 />
@@ -254,66 +306,80 @@ export default function MyAssignmentsPage() {
                     </div>
                   </div>
 
-                  {/* 重新提交功能 */}
-                  {submission.status === '不合格' && (
-                    <div className="border-t pt-4">
-                      {editingSubmission === submission.submission_id ? (
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              重新上传附件
-                            </label>
-                            <input
-                              type="file"
-                              multiple
-                              accept="image/*"
-                              onChange={(e) => setNewFiles(e.target.files ? Array.from(e.target.files) : [])}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </div>
-                          
-                          {newFiles.length > 0 && (
-                            <div>
-                              <p className="text-sm font-medium text-gray-700 mb-2">新选择的文件:</p>
-                              <ul className="space-y-1">
-                                {newFiles.map((file, index) => (
-                                  <li key={index} className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                                    {file.name}
-                                  </li>
-                                ))}
-                              </ul>
+                  {/* 操作按钮 */}
+                  <div className="border-t pt-4">
+                    <div className="flex gap-2 flex-wrap">
+                      {/* 重新提交功能 */}
+                      {submission.status === '不合格' && (
+                        <>
+                          {editingSubmission === submission.submission_id ? (
+                            <div className="w-full space-y-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  重新上传附件
+                                </label>
+                                <input
+                                  type="file"
+                                  multiple
+                                  accept="image/*"
+                                  onChange={(e) => setNewFiles(e.target.files ? Array.from(e.target.files) : [])}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              </div>
+                              
+                              {newFiles.length > 0 && (
+                                <div>
+                                  <p className="text-sm font-medium text-gray-700 mb-2">新选择的文件:</p>
+                                  <ul className="space-y-1">
+                                    {newFiles.map((file, index) => (
+                                      <li key={index} className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                                        {file.name}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleResubmit(submission.submission_id)}
+                                  disabled={loading || newFiles.length === 0}
+                                  className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {loading ? '提交中...' : '确认重新提交'}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setEditingSubmission(null);
+                                    setNewFiles([]);
+                                  }}
+                                  className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                                >
+                                  取消
+                                </button>
+                              </div>
                             </div>
+                          ) : (
+                            <button
+                              onClick={() => setEditingSubmission(submission.submission_id)}
+                              className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            >
+                              重新提交
+                            </button>
                           )}
-                          
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleResubmit(submission.submission_id)}
-                              disabled={loading || newFiles.length === 0}
-                              className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {loading ? '提交中...' : '确认重新提交'}
-                            </button>
-                            <button
-                              onClick={() => {
-                                setEditingSubmission(null);
-                                setNewFiles([]);
-                              }}
-                              className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                            >
-                              取消
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setEditingSubmission(submission.submission_id)}
-                          className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                        >
-                          重新提交
-                        </button>
+                        </>
                       )}
+                      
+                      {/* 删除按钮 */}
+                      <button
+                        onClick={() => handleDeleteSubmission(submission.submission_id)}
+                        disabled={deletingSubmission === submission.submission_id || editingSubmission === submission.submission_id}
+                        className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {deletingSubmission === submission.submission_id ? '删除中...' : '删除作业'}
+                      </button>
                     </div>
-                  )}
+                  </div>
                 </div>
               ))}
             </div>
