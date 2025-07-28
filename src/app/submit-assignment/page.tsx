@@ -8,10 +8,11 @@ import { Student, Assignment } from '@/types';
 export default function SubmitAssignmentPage() {
   const [studentId, setStudentId] = useState('');
   const [studentName, setStudentName] = useState('');
-  const [dayNumber, setDayNumber] = useState('');
+  const [selectedDayText, setSelectedDayText] = useState('');
   const [assignmentId, setAssignmentId] = useState('');
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [availableDays, setAvailableDays] = useState<string[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -40,18 +41,39 @@ export default function SubmitAssignmentPage() {
     }
   };
 
-  // 根据学习天数查询作业列表
-  const handleDayNumberChange = async (day: string) => {
-    setDayNumber(day);
+  // 获取所有可用的天数
+  useEffect(() => {
+    const fetchAvailableDays = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('assignments')
+          .select('day_text')
+          .not('day_text', 'is', null);
+        
+        if (data) {
+          const uniqueDays = [...new Set(data.map(item => item.day_text))].sort();
+          setAvailableDays(uniqueDays);
+        }
+      } catch (error) {
+        console.error('Error fetching available days:', error);
+      }
+    };
+
+    fetchAvailableDays();
+  }, []);
+
+  // 根据选择的天数查询作业列表
+  const handleDayTextChange = async (dayText: string) => {
+    setSelectedDayText(dayText);
     setAssignmentId('');
     setSelectedAssignment(null);
     
-    if (day) {
+    if (dayText) {
       try {
         const { data, error } = await supabase
           .from('assignments')
           .select('*')
-          .eq('day_number', parseInt(day));
+          .eq('day_text', dayText);
         
         if (data) {
           setAssignments(data);
@@ -145,7 +167,7 @@ export default function SubmitAssignmentPage() {
       // 重置表单
       setStudentId('');
       setStudentName('');
-      setDayNumber('');
+      setSelectedDayText('');
       setAssignmentId('');
       setSelectedAssignment(null);
       setFiles([]);
@@ -210,14 +232,14 @@ export default function SubmitAssignmentPage() {
                   学习天数 <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={dayNumber}
-                  onChange={(e) => handleDayNumberChange(e.target.value)}
+                  value={selectedDayText}
+                  onChange={(e) => handleDayTextChange(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
                   <option value="">请选择学习天数</option>
-                  {Array.from({ length: 30 }, (_, i) => i + 1).map(day => (
-                    <option key={day} value={day}>第{day}天</option>
+                  {availableDays.map(dayText => (
+                    <option key={dayText} value={dayText}>{dayText}</option>
                   ))}
                 </select>
               </div>
@@ -231,7 +253,7 @@ export default function SubmitAssignmentPage() {
                   value={assignmentId}
                   onChange={(e) => handleAssignmentChange(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={!dayNumber}
+                  disabled={!selectedDayText}
                   required
                 >
                   <option value="">请选择作业项目</option>

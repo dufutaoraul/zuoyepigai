@@ -9,7 +9,9 @@
     "lint": "next lint",
     "setup-db": "node setup-database.js",
     "import-students": "node import-students.js",
-    "test-db": "node test-connection.js"
+    "test-db": "node test-connection.js",
+    "setup-complete": "node setup-complete.js",
+    "setup-guide": "start manual-setup.html"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.7",

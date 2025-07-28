@@ -88,7 +88,7 @@ async function checkGraduationDirectly(studentId: string) {
           assignment_title,
           is_mandatory,
           assignment_category,
-          day_number
+          day_text
         )
       `)
       .eq('student_id', studentId)
@@ -101,7 +101,7 @@ async function checkGraduationDirectly(studentId: string) {
     // 2. 获取所有作业信息
     const { data: allAssignments, error: assignmentError } = await sb
       .from('assignments')
-      .select('assignment_id, assignment_title, is_mandatory, assignment_category, day_number');
+      .select('assignment_id, assignment_title, is_mandatory, assignment_category, day_text');
 
     if (assignmentError) {
       throw assignmentError;
