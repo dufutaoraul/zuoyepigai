@@ -1,0 +1,2 @@
+# Netlify重定向配置，用于Next.js API路由
+/api/* /.netlify/functions/:splat 200

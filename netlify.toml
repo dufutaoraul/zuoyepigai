@@ -1,9 +1,8 @@
+# 最简配置，让Netlify自动检测Next.js项目
 [build]
-  command = "node netlify-build.js"
+  command = "npm run build"
   
 [build.environment]
   NODE_VERSION = "18"
 
-# Next.js插件自动处理部署
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+# Netlify会自动检测到这是Next.js项目并使用正确的插件
