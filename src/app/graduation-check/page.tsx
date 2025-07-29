@@ -60,7 +60,7 @@ function GraduationCheckContent() {
 
     try {
       // 调用Netlify Function检查毕业资格
-      const response = await fetch('/.netlify/functions/check-graduation', {
+      const response = await fetch('/api/check-graduation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

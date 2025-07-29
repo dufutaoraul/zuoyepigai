@@ -285,7 +285,7 @@ export default function SubmitAssignmentPage() {
 
       // 触发AI批改（调用Netlify Function）
       try {
-        await fetch('/.netlify/functions/grade-assignment', {
+        await fetch('/api/grade-assignment', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

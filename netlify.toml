@@ -1,7 +1,7 @@
 # 简化配置，只使用环境变量禁用插件
 [build]
   command = "npm run build"
-  publish = "out"
+  publish = ".next"
   
 [build.environment]
   NODE_VERSION = "18"

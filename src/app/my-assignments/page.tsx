@@ -127,7 +127,7 @@ function MyAssignmentsContent() {
       const submission = submissions.find(s => s.submission_id === submissionId);
       if (submission) {
         try {
-          await fetch('/.netlify/functions/grade-assignment', {
+          await fetch('/api/grade-assignment', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
