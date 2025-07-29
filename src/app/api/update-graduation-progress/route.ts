@@ -54,31 +54,40 @@ const W1D2_AFTERNOON_OPTIONAL_TASKS = [
 export async function POST(request: NextRequest) {
   try {
     const { studentId } = await request.json();
+    const sb = await getSupabase();
 
-    if (!studentId) {
-      return NextResponse.json({ error: '缺少学号参数' }, { status: 400 });
+    if (studentId) {
+      // 更新特定学员的毕业进度
+      await updateStudentGraduationProgress(sb, studentId);
+      return NextResponse.json({ success: true, message: `已更新学员 ${studentId} 的毕业进度` });
+    } else {
+      // 更新所有学员的毕业进度
+      const { data: students } = await sb
+        .from('students')
+        .select('student_id');
+
+      if (students) {
+        for (const student of students) {
+          await updateStudentGraduationProgress(sb, student.student_id);
+        }
+      }
+
+      return NextResponse.json({ 
+        success: true, 
+        message: `已更新 ${students?.length || 0} 个学员的毕业进度` 
+      });
     }
 
-    // 先更新该学员的毕业进度数据
-    await updateStudentGraduationProgress(studentId);
-    
-    // 从数据库获取毕业资格检查结果
-    const graduationResult = await getGraduationProgressFromDB(studentId);
-
-    return NextResponse.json(graduationResult);
-
   } catch (error) {
-    console.error('Graduation check error:', error);
+    console.error('Update graduation progress error:', error);
     return NextResponse.json({ 
-      qualified: false,
-      message: '检查过程出错，请稍后重试'
+      error: '更新毕业进度失败', 
+      details: error 
     }, { status: 500 });
   }
 }
 
-async function updateStudentGraduationProgress(studentId: string) {
-  const sb = await getSupabase();
-  
+async function updateStudentGraduationProgress(sb: any, studentId: string) {
   // 获取该学员所有合格的作业提交
   const { data: qualifiedSubmissions } = await sb
     .from('submissions')
@@ -173,66 +182,4 @@ async function updateStudentGraduationProgress(studentId: string) {
     console.error(`Error updating graduation progress for ${studentId}:`, error);
     throw error;
   }
-}
-
-async function getGraduationProgressFromDB(studentId: string) {
-  const sb = await getSupabase();
-  
-  // 从毕业进度表获取数据
-  const { data: graduationProgress, error } = await sb
-    .from('graduation_progress')
-    .select('*')
-    .eq('student_id', studentId)
-    .single();
-
-  if (error) {
-    console.error('Error getting graduation progress:', error);
-    throw error;
-  }
-
-  if (!graduationProgress) {
-    return {
-      qualified: false,
-      message: '未找到该学员的毕业进度记录'
-    };
-  }
-
-  // 构建详细的毕业资格报告
-  const { is_qualified, missing_requirements } = graduationProgress;
-  
-  let message = '';
-  if (is_qualified) {
-    message = '恭喜您，已满足所有毕业条件！您可以联系管理员申请毕业证书。';
-  } else {
-    message = `尚未满足毕业条件。原因：${missing_requirements.join('；')}。`;
-  }
-
-  return {
-    qualified: is_qualified,
-    message,
-    details: {
-      standard1: {
-        name: '必做作业标准',
-        pass: graduationProgress.mandatory_completed_count >= graduationProgress.mandatory_total_count,
-        completed: graduationProgress.mandatory_completed_count,
-        total: graduationProgress.mandatory_total_count,
-        progress: `${graduationProgress.mandatory_completed_count}/${graduationProgress.mandatory_total_count}`
-      },
-      standard2: {
-        name: '第一周第二天下午选做作业标准',
-        pass: graduationProgress.w1d2_afternoon_completed_count >= graduationProgress.w1d2_afternoon_required_count,
-        completed: graduationProgress.w1d2_afternoon_completed_count,
-        required: graduationProgress.w1d2_afternoon_required_count,
-        progress: `${graduationProgress.w1d2_afternoon_completed_count}/${graduationProgress.w1d2_afternoon_required_count}`
-      },
-      standard3: {
-        name: '其他选做作业标准',
-        pass: graduationProgress.other_optional_completed_count >= graduationProgress.other_optional_required_count,
-        completed: graduationProgress.other_optional_completed_count,
-        required: graduationProgress.other_optional_required_count,
-        progress: `${graduationProgress.other_optional_completed_count}/${graduationProgress.other_optional_required_count}`
-      },
-      lastUpdated: graduationProgress.last_updated
-    }
-  };
 }

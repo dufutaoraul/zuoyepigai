@@ -17,7 +17,10 @@
       "mcp__ide__getDiagnostics",
       "Bash(claude mcp add:*)",
       "Bash(rm:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(npx supabase db reset:*)",
+      "Bash(psql:*)",
+      "Bash(curl:*)"
     ],
     "deny": []
   }
