@@ -1,20 +1,13 @@
-# 强制禁用Next.js插件的配置
+# 简化配置，只使用环境变量禁用插件
 [build]
   command = "npm run build"
   publish = "out"
   
 [build.environment]
   NODE_VERSION = "18"
-  # 多种方式强制禁用Next.js插件
+  # 尝试禁用Next.js插件的环境变量
   NETLIFY_NEXT_PLUGIN_SKIP = "true"
   DISABLE_NETLIFY_NEXT = "true"
-  NETLIFY_SKIP_PLUGIN_NEXTJS = "true"
-
-# 明确禁用插件 - 覆盖UI设置
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
-  [plugins.inputs]
-    disable = true
 
 [functions]
   directory = "netlify/functions"
