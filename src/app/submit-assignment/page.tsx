@@ -261,7 +261,10 @@ export default function SubmitAssignmentPage() {
           .from('assignments')
           .upload(fileName, file);
         
-        if (error) throw error;
+        if (error) {
+          console.error('File upload error:', error);
+          throw new Error(`文件上传失败: ${error.message}`);
+        }
         
         const { data: { publicUrl } } = supabase.storage
           .from('assignments')
@@ -281,7 +284,10 @@ export default function SubmitAssignmentPage() {
           status: '批改中'
         });
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('Database insert error:', insertError);
+        throw new Error(`数据库插入失败: ${insertError.message}`);
+      }
 
       // 触发AI批改（调用Netlify Function）
       try {
@@ -307,7 +313,8 @@ export default function SubmitAssignmentPage() {
       
     } catch (error) {
       console.error('Error submitting assignment:', error);
-      setMessage('提交失败，请重试');
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      setMessage(`提交失败: ${errorMessage}，请重试`);
     } finally {
       setLoading(false);
     }
