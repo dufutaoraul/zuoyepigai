@@ -13,26 +13,49 @@ export async function POST(request: NextRequest) {
     
     // 检查环境变量
     const douBaoApiKey = process.env.DOUBAO_API_KEY;
+    const modelId = process.env.DOUBAO_MODEL_ID;
+    const apiUrl = process.env.DOUBAO_API_URL;
+    
+    console.log('Environment check:', {
+      hasApiKey: !!douBaoApiKey,
+      hasModelId: !!modelId,
+      hasApiUrl: !!apiUrl,
+      apiKeyPreview: douBaoApiKey ? douBaoApiKey.substring(0, 10) + '...' : 'null',
+      modelId: modelId,
+      apiUrl: apiUrl
+    });
     
     if (!douBaoApiKey) {
       return NextResponse.json({ 
         success: false,
         error: 'DOUBAO_API_KEY not configured',
-        hasKey: false
+        hasKey: false,
+        env: {
+          hasApiKey: false,
+          hasModelId: !!modelId,
+          hasApiUrl: !!apiUrl
+        }
       });
     }
 
     console.log('API Key found, testing connection...');
 
     // 测试豆包API连接
-    const testResponse = await fetch('https://ark.cn-beijing.volces.com/api/v3/chat/completions', {
+    const testApiUrl = apiUrl || 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
+    const testModelId = modelId || 'ep-20250524195324-l4t8t';
+    
+    console.log('Making request to:', testApiUrl);
+    console.log('Using model:', testModelId);
+    console.log('Authorization header:', douBaoApiKey.substring(0, 20) + '...');
+    
+    const testResponse = await fetch(testApiUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${douBaoApiKey}`,
+        'Authorization': douBaoApiKey,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'ep-20250524195324-l4t8t',
+        model: testModelId,
         messages: [
           {
             role: 'user',

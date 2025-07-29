@@ -86,8 +86,22 @@ async function callDouBaoAPI(assignmentDescription: string, attachmentUrls: stri
   const modelId = process.env.DOUBAO_MODEL_ID;
   const apiUrl = process.env.DOUBAO_API_URL;
 
+  console.log('豆包API配置检查:', {
+    hasApiKey: !!apiKey,
+    hasModelId: !!modelId,
+    hasApiUrl: !!apiUrl,
+    apiKeyPreview: apiKey ? apiKey.substring(0, 15) + '...' : 'null',
+    modelId: modelId,
+    apiUrl: apiUrl,
+    attachmentCount: attachmentUrls.length
+  });
+
   if (!apiKey || !modelId || !apiUrl) {
-    throw new Error('豆包API配置缺失');
+    const missing = [];
+    if (!apiKey) missing.push('DOUBAO_API_KEY');
+    if (!modelId) missing.push('DOUBAO_MODEL_ID');
+    if (!apiUrl) missing.push('DOUBAO_API_URL');
+    throw new Error(`豆包API配置缺失: ${missing.join(', ')}`);
   }
 
   // 构建优化的Prompt
@@ -138,17 +152,27 @@ ${assignmentDescription}
     temperature: 0.1
   };
 
-  console.log('调用豆包API，请求体:', JSON.stringify(requestBody, null, 2));
+  console.log('调用豆包API开始');
+  console.log('请求URL:', apiUrl);
+  console.log('请求头Authorization:', apiKey.substring(0, 20) + '...');
+  console.log('请求体大小:', JSON.stringify(requestBody).length, 'bytes');
+  console.log('消息内容数量:', requestBody.messages[0].content.length);
 
   try {
+    const startTime = Date.now();
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Authorization': apiKey,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
+      // 增加超时设置
+      signal: AbortSignal.timeout(25000) // 25秒超时
     });
+    
+    const responseTime = Date.now() - startTime;
+    console.log('豆包API响应时间:', responseTime, 'ms');
 
     if (!response.ok) {
       const errorText = await response.text();

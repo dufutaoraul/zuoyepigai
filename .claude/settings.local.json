@@ -23,7 +23,9 @@
       "Bash(curl:*)",
       "WebFetch(domain:pigaizuoye.netlify.app)",
       "Bash(mv:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(git tag:*)"
     ],
     "deny": []
   }
