@@ -109,7 +109,7 @@ ${assignmentDescription}
 现在请批改学员提交的作业图片。`;
 
   // 构建消息内容，包含文本和图片
-  const messageContent = [
+  const messageContent: any[] = [
     {
       type: "text",
       text: prompt
