@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
@@ -11,7 +11,7 @@ interface SubmissionWithAssignment extends Submission {
   assignment: Assignment;
 }
 
-export default function MyAssignmentsPage() {
+function MyAssignmentsContent() {
   const searchParams = useSearchParams();
   const [studentId, setStudentId] = useState('');
   const [submissions, setSubmissions] = useState<SubmissionWithAssignment[]>([]);
@@ -389,5 +389,13 @@ export default function MyAssignmentsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function MyAssignmentsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>}>
+      <MyAssignmentsContent />
+    </Suspense>
   );
 }

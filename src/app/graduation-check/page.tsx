@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-export default function GraduationCheckPage() {
+function GraduationCheckContent() {
   const searchParams = useSearchParams();
   const [studentId, setStudentId] = useState('');
   const [loading, setLoading] = useState(false);
@@ -311,5 +311,13 @@ export default function GraduationCheckPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function GraduationCheckPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>}>
+      <GraduationCheckContent />
+    </Suspense>
   );
 }

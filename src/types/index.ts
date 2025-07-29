@@ -19,6 +19,6 @@ export interface Submission {
   assignment_id: string;
   submission_date: string;
   attachments_urls: string[];
-  status: '批改中' | '合格' | '不合格';
+  status: '批改中' | '合格' | '不合格' | '批改失败';
   feedback?: string;
 }
