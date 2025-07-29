@@ -79,6 +79,13 @@ export async function POST(request: NextRequest) {
 async function updateStudentGraduationProgress(studentId: string) {
   const sb = await getSupabase();
   
+  // 先尝试创建graduation_progress表（如果不存在）
+  try {
+    await createGraduationProgressTableIfNotExists(sb);
+  } catch (tableError) {
+    console.log('Table creation attempt completed:', tableError);
+  }
+  
   // 获取该学员所有合格的作业提交
   const { data: qualifiedSubmissions } = await sb
     .from('submissions')
@@ -178,6 +185,13 @@ async function updateStudentGraduationProgress(studentId: string) {
 async function getGraduationProgressFromDB(studentId: string) {
   const sb = await getSupabase();
   
+  // 先尝试创建graduation_progress表（如果不存在）
+  try {
+    await createGraduationProgressTableIfNotExists(sb);
+  } catch (tableError) {
+    console.log('Table creation attempt completed:', tableError);
+  }
+  
   // 从毕业进度表获取数据
   const { data: graduationProgress, error } = await sb
     .from('graduation_progress')
@@ -187,6 +201,13 @@ async function getGraduationProgressFromDB(studentId: string) {
 
   if (error) {
     console.error('Error getting graduation progress:', error);
+    // 如果是表不存在的错误，返回友好提示
+    if (error.code === '42P01') {
+      return {
+        qualified: false,
+        message: '毕业统计功能正在初始化中，请稍后重试'
+      };
+    }
     throw error;
   }
 
@@ -235,4 +256,46 @@ async function getGraduationProgressFromDB(studentId: string) {
       lastUpdated: graduationProgress.last_updated
     }
   };
+}
+
+async function createGraduationProgressTableIfNotExists(sb: any) {
+  // 尝试创建graduation_progress表
+  const createTableSQL = `
+    CREATE TABLE IF NOT EXISTS graduation_progress (
+        student_id VARCHAR PRIMARY KEY REFERENCES students(student_id) ON DELETE CASCADE,
+        
+        -- 必做作业统计
+        mandatory_completed_count INTEGER DEFAULT 0,
+        mandatory_total_count INTEGER DEFAULT 28,
+        mandatory_completed_list TEXT[] DEFAULT '{}',
+        
+        -- 第一周第二天下午选做作业统计  
+        w1d2_afternoon_completed_count INTEGER DEFAULT 0,
+        w1d2_afternoon_required_count INTEGER DEFAULT 1,
+        w1d2_afternoon_completed_list TEXT[] DEFAULT '{}',
+        
+        -- 其他选做作业统计
+        other_optional_completed_count INTEGER DEFAULT 0, 
+        other_optional_required_count INTEGER DEFAULT 1,
+        other_optional_completed_list TEXT[] DEFAULT '{}',
+        
+        -- 毕业状态
+        is_qualified BOOLEAN DEFAULT FALSE,
+        missing_requirements TEXT[] DEFAULT '{}',
+        last_updated TIMESTAMP DEFAULT NOW()
+    );
+
+    -- 创建索引优化查询
+    CREATE INDEX IF NOT EXISTS idx_graduation_progress_qualified ON graduation_progress(is_qualified);
+    CREATE INDEX IF NOT EXISTS idx_graduation_progress_updated ON graduation_progress(last_updated);
+  `;
+  
+  try {
+    // 尝试执行SQL - 如果Supabase支持raw SQL
+    if (sb.rpc) {
+      await sb.rpc('exec_sql', { sql: createTableSQL });
+    }
+  } catch (error) {
+    console.log('Table creation via RPC failed, table may already exist:', error);
+  }
 }
