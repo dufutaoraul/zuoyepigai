@@ -20,8 +20,13 @@ export default function SubmitAssignmentPage() {
   const [message, setMessage] = useState('');
   const [gradingResult, setGradingResult] = useState<{status: string, feedback: string} | null>(null);
   const [showResult, setShowResult] = useState(false);
+  
+  // 学号自动补全相关状态
+  const [allStudents, setAllStudents] = useState<{student_id: string, student_name: string}[]>([]);
+  const [filteredStudents, setFilteredStudents] = useState<{student_id: string, student_name: string}[]>([]);
+  const [showStudentDropdown, setShowStudentDropdown] = useState(false);
 
-  // 初始化时从localStorage读取学号
+  // 初始化时从localStorage读取学号和加载所有学生数据
   useEffect(() => {
     const savedStudentId = localStorage.getItem('lastStudentId');
     if (savedStudentId) {
@@ -29,16 +34,71 @@ export default function SubmitAssignmentPage() {
       setStudentId(savedStudentId);
       handleStudentIdChange(savedStudentId);
     }
+    
+    // 加载所有学生数据用于自动补全
+    loadAllStudents();
   }, []);
 
-  // 根据学号查询学员姓名
-  const handleStudentIdChange = async (id: string) => {
-    setStudentId(id);
-    if (id.length > 0) {
-      try {
-        // 清除之前的姓名，避免显示旧数据
+  // 加载所有学生数据
+  const loadAllStudents = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select('student_id, student_name')
+        .order('student_id');
+      
+      if (data && !error) {
+        setAllStudents(data);
+      }
+    } catch (error) {
+      console.error('Error loading students:', error);
+    }
+  };
+
+  // 学号输入变化处理
+  const handleStudentIdInput = (value: string) => {
+    setStudentId(value);
+    
+    if (value.length > 0) {
+      // 过滤匹配的学生
+      const filtered = allStudents.filter(student => 
+        student.student_id.toLowerCase().includes(value.toLowerCase()) ||
+        student.student_name.toLowerCase().includes(value.toLowerCase())
+      );
+      setFilteredStudents(filtered);
+      setShowStudentDropdown(filtered.length > 0);
+      
+      // 如果找到完全匹配的学号，自动填充姓名
+      const exactMatch = allStudents.find(student => student.student_id === value);
+      if (exactMatch) {
+        setStudentName(exactMatch.student_name);
+        localStorage.setItem('lastStudentId', value);
+        setShowStudentDropdown(false);
+      } else {
         setStudentName('');
-        
+      }
+    } else {
+      setStudentName('');
+      setShowStudentDropdown(false);
+      setFilteredStudents([]);
+    }
+  };
+
+  // 选择学生
+  const selectStudent = (student: {student_id: string, student_name: string}) => {
+    setStudentId(student.student_id);
+    setStudentName(student.student_name);
+    localStorage.setItem('lastStudentId', student.student_id);
+    setShowStudentDropdown(false);
+  };
+
+  // 根据学号查询学员姓名（保留原有逻辑用于初始化）
+  const handleStudentIdChange = async (id: string) => {
+    const student = allStudents.find(s => s.student_id === id);
+    if (student) {
+      setStudentName(student.student_name);
+    } else if (id.length > 0) {
+      try {
         const { data, error } = await supabase
           .from('students')
           .select('student_name')
@@ -47,7 +107,6 @@ export default function SubmitAssignmentPage() {
         
         if (data && !error) {
           setStudentName(data.student_name);
-          // 保存到localStorage
           localStorage.setItem('lastStudentId', id);
         } else {
           setStudentName('');
@@ -272,18 +331,50 @@ export default function SubmitAssignmentPage() {
           <div className="bg-white rounded-lg shadow-md p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* 学号输入 */}
-              <div>
+              <div className="relative">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   学号 <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={studentId}
-                  onChange={(e) => handleStudentIdChange(e.target.value)}
+                  onChange={(e) => handleStudentIdInput(e.target.value)}
+                  onFocus={() => {
+                    if (filteredStudents.length > 0) {
+                      setShowStudentDropdown(true);
+                    }
+                  }}
+                  onBlur={() => {
+                    // 延迟隐藏下拉框，允许点击选项
+                    setTimeout(() => setShowStudentDropdown(false), 200);
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="请输入学号"
+                  placeholder="请输入学号或姓名搜索"
                   required
                 />
+                
+                {/* 自动补全下拉列表 */}
+                {showStudentDropdown && filteredStudents.length > 0 && (
+                  <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto mt-1">
+                    {filteredStudents.slice(0, 10).map((student, index) => (
+                      <div
+                        key={student.student_id}
+                        onClick={() => selectStudent(student)}
+                        className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium text-gray-900">{student.student_id}</span>
+                          <span className="text-gray-600">{student.student_name}</span>
+                        </div>
+                      </div>
+                    ))}
+                    {filteredStudents.length > 10 && (
+                      <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                        还有 {filteredStudents.length - 10} 个结果...
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* 学员姓名显示 */}

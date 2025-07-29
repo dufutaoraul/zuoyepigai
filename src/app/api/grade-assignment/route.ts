@@ -73,8 +73,8 @@ async function gradeWithDouBaoAI(attachmentUrls: string[], assignmentId: string)
     return {
       status: isQualified ? '合格' : '不合格',
       feedback: isQualified 
-        ? `作业《${assignment.assignment_title}》批改完成。您的作业符合要求，内容完整，格式规范，继续保持！` 
-        : `作业《${assignment.assignment_title}》需要改进。请根据作业要求重新完善内容和格式，然后重新提交。`
+        ? '恭喜您，您的作业审核合格' 
+        : `您的作业审核不合格。不合格原因：提交的内容不符合作业要求。修改意见：请仔细阅读作业要求《${assignment.assignment_title}》，确保提交的内容符合所有要求点，然后重新提交。`
     };
 
     if (!douBaoApiKey) {
@@ -102,21 +102,21 @@ async function gradeWithDouBaoAI(attachmentUrls: string[], assignmentId: string)
         messages: [
           {
             role: 'system',
-            content: `你是一个专业的作业批改助手。请根据作业要求批改学生提交的作业图片，并给出"合格"或"不合格"的评价以及具体的批改意见。
+            content: `你是一个专业的作业批改助手。请根据学员选择的作业对应的"详细作业要求"判断收到的图片是否符合要求。
 
 作业标题: ${assignment.assignment_title}
-作业要求: ${assignment.description}
+详细作业要求: ${assignment.description}
 
-请你：
+批改规则：
 1. 仔细查看所有提交的图片
-2. 根据作业要求判断是否达标
-3. 给出"合格"或"不合格"的结论
-4. 提供具体的批改意见和建议
+2. 严格按照"详细作业要求"判断是否符合要求
+3. 符合要求：返回"合格"，反馈内容只说"恭喜您，您的作业审核合格"
+4. 不符合要求：返回"不合格"，说明不合格原因并提出修改意见
 
-输出格式应该是JSON格式：
+输出格式必须是JSON格式：
 {
   "status": "合格" 或 "不合格",
-  "feedback": "具体的批改意见"
+  "feedback": "反馈内容"
 }`
           },
           {
