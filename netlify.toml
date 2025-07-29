@@ -1,8 +1,9 @@
-# 最简配置，让Netlify自动检测Next.js项目
 [build]
   command = "npm run build"
+  publish = "out"
   
 [build.environment]
   NODE_VERSION = "18"
 
-# Netlify会自动检测到这是Next.js项目并使用正确的插件
+[functions]
+  directory = "netlify/functions"
