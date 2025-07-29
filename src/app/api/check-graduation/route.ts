@@ -76,67 +76,78 @@ export async function POST(request: NextRequest) {
 async function getGraduationProgressFromDB(studentId: string) {
   const sb = await getSupabase();
   
-  // 获取该学员的综合统计信息
-  const { data: submissionWithStats } = await sb
+  // 直接从数据库查询该学员的所有合格作业提交记录
+  const { data: submissions, error } = await sb
     .from('submissions')
-    .select('assignment_comprehensive_statistics')
+    .select(`
+      *,
+      assignment:assignments(*)
+    `)
     .eq('student_id', studentId)
-    .eq('status', '合格')
-    .not('assignment_comprehensive_statistics', 'is', null)
-    .limit(1)
-    .single();
+    .eq('status', '合格');
 
-  if (!submissionWithStats || !submissionWithStats.assignment_comprehensive_statistics) {
+  if (error) {
+    console.error('查询提交记录失败:', error);
+    throw new Error('查询提交记录失败');
+  }
+
+  if (!submissions || submissions.length === 0) {
     return {
       qualified: false,
-      message: '未找到该学员的作业完成记录，请先完成并通过至少一个作业。'
+      message: '未找到该学员的合格作业记录，请先完成并通过至少一个作业。'
     };
   }
 
-  // 解析综合统计字符串
-  const statsString = submissionWithStats.assignment_comprehensive_statistics;
-  const assignmentRecords = statsString.split(',').map((record: string) => record.trim());
+  console.log(`找到 ${submissions.length} 个合格的作业提交记录`);
   
-  // 分析统计数据
+  // 分析已完成的作业
   let mandatoryCompletedCount = 0;
   let w1d2AfternoonCompletedCount = 0;  
   let otherOptionalCompletedCount = 0;
   
-  const completedMandatoryTasks = [];
-  const completedW1D2Tasks = [];
-  const completedOtherTasks = [];
+  const completedMandatoryTasks: string[] = [];
+  const completedW1D2Tasks: string[] = [];
+  const completedOtherTasks: string[] = [];
   const missingMandatoryTasks = [...MANDATORY_TASKS];
 
-  for (const record of assignmentRecords) {
-    // 解析格式："第一周第一天 - 三项全能作品集 - 必做 - 合格"
-    const parts = record.split(' - ').map((p: string) => p.trim());
-    if (parts.length >= 4) {
-      const dayText = parts[0];
-      const taskName = parts[1];
-      const taskType = parts[2];
-      const status = parts[3];
+  for (const submission of submissions) {
+    const assignment = submission.assignment;
+    if (!assignment) continue;
 
-      if (status === '合格') {
-        if (taskType === '必做' && MANDATORY_TASKS.includes(taskName)) {
-          mandatoryCompletedCount++;
-          completedMandatoryTasks.push(taskName);
-          // 从缺失列表中移除
-          const index = missingMandatoryTasks.indexOf(taskName);
-          if (index > -1) {
-            missingMandatoryTasks.splice(index, 1);
-          }
-        }
-        else if (taskType === '选做' && dayText === '第一周第二天下午' && W1D2_AFTERNOON_OPTIONAL_TASKS.includes(taskName)) {
-          w1d2AfternoonCompletedCount++;
-          completedW1D2Tasks.push(taskName);
-        }
-        else if (taskType === '选做' && dayText !== '第一周第二天下午') {
-          otherOptionalCompletedCount++;
-          completedOtherTasks.push(taskName);
-        }
+    const taskName = assignment.assignment_title;
+    const isOptional = !assignment.is_mandatory;
+    
+    // 判断是否为第一周第二天下午的作业
+    // 由于数据库缺少day_text字段，暂时通过作业名称判断
+    const isW1D2Afternoon = W1D2_AFTERNOON_OPTIONAL_TASKS.includes(taskName);
+
+    console.log(`分析作业: ${taskName}, 类型: ${assignment.is_mandatory ? '必做' : '选做'}, W1D2: ${isW1D2Afternoon}`);
+
+    if (assignment.is_mandatory && MANDATORY_TASKS.includes(taskName)) {
+      // 必做作业
+      mandatoryCompletedCount++;
+      completedMandatoryTasks.push(taskName);
+      const index = missingMandatoryTasks.indexOf(taskName);
+      if (index > -1) {
+        missingMandatoryTasks.splice(index, 1);
       }
+    } else if (isOptional && isW1D2Afternoon && W1D2_AFTERNOON_OPTIONAL_TASKS.includes(taskName)) {
+      // 第一周第二天下午的选做作业
+      w1d2AfternoonCompletedCount++;
+      completedW1D2Tasks.push(taskName);
+    } else if (isOptional && !isW1D2Afternoon) {
+      // 其他选做作业
+      otherOptionalCompletedCount++;
+      completedOtherTasks.push(taskName);
     }
   }
+
+  console.log('统计结果:', {
+    mandatoryCompletedCount,
+    w1d2AfternoonCompletedCount,
+    otherOptionalCompletedCount,
+    missingMandatoryTasks: missingMandatoryTasks.slice(0, 5)
+  });
 
   // 判断毕业资格
   const condition1Passed = mandatoryCompletedCount >= MANDATORY_TASKS.length;
@@ -174,29 +185,22 @@ async function getGraduationProgressFromDB(studentId: string) {
         pass: condition1Passed,
         completed: mandatoryCompletedCount,
         total: MANDATORY_TASKS.length,
-        progress: `${mandatoryCompletedCount}/${MANDATORY_TASKS.length}`,
-        completedTasks: completedMandatoryTasks,
-        missingTasks: missingMandatoryTasks.slice(0, 5) // 只显示前5个缺失的
+        pending: missingMandatoryTasks.slice(0, 10) // 显示前10个缺失的作业
       },
       standard2: {
         name: '第一周第二天下午选做作业标准',
         pass: condition2Passed,
         completed: w1d2AfternoonCompletedCount,
         required: 1,
-        progress: `${w1d2AfternoonCompletedCount}/1`,
-        completedTasks: completedW1D2Tasks,
-        availableTasks: W1D2_AFTERNOON_OPTIONAL_TASKS
+        available: W1D2_AFTERNOON_OPTIONAL_TASKS
       },
       standard3: {
-        name: '其他选做作业标准', 
+        name: '其他选做作业标准',
         pass: condition3Passed,
         completed: otherOptionalCompletedCount,
         required: 1,
-        progress: `${otherOptionalCompletedCount}/1`,
-        completedTasks: completedOtherTasks.slice(0, 3) // 只显示前3个
-      },
-      totalRecords: assignmentRecords.length,
-      lastUpdated: new Date().toISOString()
+        available: completedOtherTasks.length + (submissions.length - mandatoryCompletedCount - w1d2AfternoonCompletedCount - otherOptionalCompletedCount)
+      }
     }
   };
 }
