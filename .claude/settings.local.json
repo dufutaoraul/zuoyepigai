@@ -25,7 +25,10 @@
       "Bash(mv:*)",
       "Bash(find:*)",
       "Bash(git remote set-url:*)",
-      "Bash(git tag:*)"
+      "Bash(git tag:*)",
+      "Bash(ls:*)",
+      "WebFetch(domain:www.volcengine.com)",
+      "WebFetch(domain:console.volcengine.com)"
     ],
     "deny": []
   }
