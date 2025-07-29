@@ -22,7 +22,8 @@
       "Bash(psql:*)",
       "Bash(curl:*)",
       "WebFetch(domain:pigaizuoye.netlify.app)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }

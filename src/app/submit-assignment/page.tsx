@@ -283,9 +283,9 @@ export default function SubmitAssignmentPage() {
 
       if (insertError) throw insertError;
 
-      // 触发AI批改（这里需要调用API）
+      // 触发AI批改（调用Netlify Function）
       try {
-        await fetch('/api/grade-assignment', {
+        await fetch('/.netlify/functions/grade-assignment', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

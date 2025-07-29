@@ -87,157 +87,195 @@ exports.handler = async (event, context) => {
 };
 
 async function updateStudentGraduationProgress(studentId) {
-  // 先尝试创建graduation_progress表（如果不存在）
-  try {
-    await createGraduationProgressTableIfNotExists();
-  } catch (tableError) {
-    console.log('Table creation attempt completed:', tableError);
-  }
+  // 使用您建议的方法：基于"作业综合统计情况"字段进行判断
   
-  // 获取该学员所有合格的作业提交
-  const { data: qualifiedSubmissions } = await supabase
+  // 获取该学员任一合格作业的综合统计信息
+  const { data: submissionWithStats } = await supabase
     .from('submissions')
-    .select(`
-      assignment_id,
-      status,
-      assignment:assignments(
-        assignment_title,
-        is_mandatory,
-        day_number,
-        assignment_category
-      )
-    `)
+    .select('assignment_comprehensive_statistics')
     .eq('student_id', studentId)
-    .eq('status', '合格');
+    .eq('status', '合格')
+    .not('assignment_comprehensive_statistics', 'is', null)
+    .limit(1)
+    .single();
 
-  if (!qualifiedSubmissions) {
+  if (!submissionWithStats || !submissionWithStats.assignment_comprehensive_statistics) {
+    console.log('No comprehensive statistics found for student:', studentId);
     return;
   }
 
-  // 统计逻辑（与API路由相同）
+  // 解析综合统计字符串
+  const statsString = submissionWithStats.assignment_comprehensive_statistics;
+  const assignmentRecords = statsString.split(',').map(record => record.trim());
+  
+  console.log('解析学员作业统计:', assignmentRecords.length, '条记录');
+
+  // 分析统计数据
   let mandatoryCompletedCount = 0;
-  let mandatoryCompletedList = [];
   let w1d2AfternoonCompletedCount = 0;
-  let w1d2AfternoonCompletedList = [];
   let otherOptionalCompletedCount = 0;
-  let otherOptionalCompletedList = [];
+  
+  const completedMandatoryTasks = [];
+  const completedW1D2Tasks = [];
+  const completedOtherTasks = [];
 
-  for (const submission of qualifiedSubmissions) {
-    const assignment = submission.assignment;
-    const assignmentTitle = assignment.assignment_title;
+  for (const record of assignmentRecords) {
+    // 解析格式："第一周第一天 - 三项全能作品集 - 必做 - 合格"
+    const parts = record.split(' - ').map(p => p.trim());
+    if (parts.length >= 4) {
+      const dayText = parts[0];
+      const taskName = parts[1];
+      const taskType = parts[2];
+      const status = parts[3];
 
-    if (assignment.is_mandatory && MANDATORY_TASKS.includes(assignmentTitle)) {
-      mandatoryCompletedCount++;
-      mandatoryCompletedList.push(submission.assignment_id);
-    }
-    else if (!assignment.is_mandatory && W1D2_AFTERNOON_OPTIONAL_TASKS.includes(assignmentTitle)) {
-      w1d2AfternoonCompletedCount++;
-      w1d2AfternoonCompletedList.push(submission.assignment_id);
-    }
-    else if (!assignment.is_mandatory) {
-      otherOptionalCompletedCount++;
-      otherOptionalCompletedList.push(submission.assignment_id);
+      if (status === '合格') {
+        if (taskType === '必做' && MANDATORY_TASKS.includes(taskName)) {
+          mandatoryCompletedCount++;
+          completedMandatoryTasks.push(taskName);
+        }
+        else if (taskType === '选做' && dayText === '第一周第二天下午' && W1D2_AFTERNOON_OPTIONAL_TASKS.includes(taskName)) {
+          w1d2AfternoonCompletedCount++;
+          completedW1D2Tasks.push(taskName);
+        }
+        else if (taskType === '选做' && dayText !== '第一周第二天下午') {
+          otherOptionalCompletedCount++;
+          completedOtherTasks.push(taskName);
+        }
+      }
     }
   }
 
+  console.log('统计结果:', {
+    mandatoryCompleted: mandatoryCompletedCount,
+    w1d2Completed: w1d2AfternoonCompletedCount,
+    otherCompleted: otherOptionalCompletedCount
+  });
+}
+
+async function getGraduationProgressFromDB(studentId) {
+  // 使用您建议的方法：直接从作业综合统计字段分析毕业资格
+  
+  // 获取该学员的综合统计信息
+  const { data: submissionWithStats } = await supabase
+    .from('submissions')
+    .select('assignment_comprehensive_statistics')
+    .eq('student_id', studentId)
+    .eq('status', '合格')
+    .not('assignment_comprehensive_statistics', 'is', null)
+    .limit(1)
+    .single();
+
+  if (!submissionWithStats || !submissionWithStats.assignment_comprehensive_statistics) {
+    return {
+      qualified: false,
+      message: '未找到该学员的作业完成记录，请先完成并通过至少一个作业。'
+    };
+  }
+
+  // 解析综合统计字符串
+  const statsString = submissionWithStats.assignment_comprehensive_statistics;
+  const assignmentRecords = statsString.split(',').map(record => record.trim());
+  
+  // 分析统计数据
+  let mandatoryCompletedCount = 0;
+  let w1d2AfternoonCompletedCount = 0;  
+  let otherOptionalCompletedCount = 0;
+  
+  const completedMandatoryTasks = [];
+  const completedW1D2Tasks = [];
+  const completedOtherTasks = [];
+  const missingMandatoryTasks = [...MANDATORY_TASKS];
+
+  for (const record of assignmentRecords) {
+    // 解析格式："第一周第一天 - 三项全能作品集 - 必做 - 合格"
+    const parts = record.split(' - ').map(p => p.trim());
+    if (parts.length >= 4) {
+      const dayText = parts[0];
+      const taskName = parts[1];
+      const taskType = parts[2];
+      const status = parts[3];
+
+      if (status === '合格') {
+        if (taskType === '必做' && MANDATORY_TASKS.includes(taskName)) {
+          mandatoryCompletedCount++;
+          completedMandatoryTasks.push(taskName);
+          // 从缺失列表中移除
+          const index = missingMandatoryTasks.indexOf(taskName);
+          if (index > -1) {
+            missingMandatoryTasks.splice(index, 1);
+          }
+        }
+        else if (taskType === '选做' && dayText === '第一周第二天下午' && W1D2_AFTERNOON_OPTIONAL_TASKS.includes(taskName)) {
+          w1d2AfternoonCompletedCount++;
+          completedW1D2Tasks.push(taskName);
+        }
+        else if (taskType === '选做' && dayText !== '第一周第二天下午') {
+          otherOptionalCompletedCount++;
+          completedOtherTasks.push(taskName);
+        }
+      }
+    }
+  }
+
+  // 判断毕业资格
   const condition1Passed = mandatoryCompletedCount >= MANDATORY_TASKS.length;
   const condition2Passed = w1d2AfternoonCompletedCount >= 1;
   const condition3Passed = otherOptionalCompletedCount >= 1;
   const isQualified = condition1Passed && condition2Passed && condition3Passed;
 
+  // 生成详细的毕业资格报告
   const missingRequirements = [];
   if (!condition1Passed) {
-    const missingCount = MANDATORY_TASKS.length - mandatoryCompletedCount;
-    missingRequirements.push(`缺少 ${missingCount} 个必做作业`);
+    missingRequirements.push(
+      `还需完成 ${missingMandatoryTasks.length} 个必做作业：${missingMandatoryTasks.slice(0, 3).join('、')}${missingMandatoryTasks.length > 3 ? '等' : ''}`
+    );
   }
   if (!condition2Passed) {
-    missingRequirements.push('缺少第一周第二天下午的选做作业（需至少完成1个）');
+    missingRequirements.push('需要完成第一周第二天下午的选做作业中至少1个');
   }
   if (!condition3Passed) {
-    missingRequirements.push('缺少其他选做作业（需至少完成1个）');
+    missingRequirements.push('需要完成其他选做作业中至少1个');
   }
 
-  await supabase
-    .from('graduation_progress')
-    .upsert({
-      student_id: studentId,
-      mandatory_completed_count: mandatoryCompletedCount,
-      mandatory_total_count: MANDATORY_TASKS.length,
-      mandatory_completed_list: mandatoryCompletedList,
-      w1d2_afternoon_completed_count: w1d2AfternoonCompletedCount,
-      w1d2_afternoon_required_count: 1,
-      w1d2_afternoon_completed_list: w1d2AfternoonCompletedList,
-      other_optional_completed_count: otherOptionalCompletedCount,
-      other_optional_required_count: 1,
-      other_optional_completed_list: otherOptionalCompletedList,
-      is_qualified: isQualified,
-      missing_requirements: missingRequirements,
-      last_updated: new Date().toISOString()
-    }, {
-      onConflict: 'student_id'
-    });
-}
-
-async function getGraduationProgressFromDB(studentId) {
-  const { data: graduationProgress, error } = await supabase
-    .from('graduation_progress')
-    .select('*')
-    .eq('student_id', studentId)
-    .single();
-
-  if (error) {
-    console.error('Error getting graduation progress:', error);
-    if (error.code === '42P01') {
-      return {
-        qualified: false,
-        message: '毕业统计功能正在初始化中，请稍后重试'
-      };
-    }
-    throw error;
-  }
-
-  if (!graduationProgress) {
-    return {
-      qualified: false,
-      message: '未找到该学员的毕业进度记录'
-    };
-  }
-
-  const { is_qualified, missing_requirements } = graduationProgress;
-  
   let message = '';
-  if (is_qualified) {
-    message = '恭喜您，已满足所有毕业条件！您可以联系管理员申请毕业证书。';
+  if (isQualified) {
+    message = '🎉 恭喜您，已满足所有毕业条件！您可以联系管理员申请毕业证书。';
   } else {
-    message = `尚未满足毕业条件。原因：${missing_requirements.join('；')}。`;
+    message = `尚未满足毕业条件。${missingRequirements.join('；')}。`;
   }
 
   return {
-    qualified: is_qualified,
+    qualified: isQualified,
     message,
     details: {
       standard1: {
         name: '必做作业标准',
-        pass: graduationProgress.mandatory_completed_count >= graduationProgress.mandatory_total_count,
-        completed: graduationProgress.mandatory_completed_count,
-        total: graduationProgress.mandatory_total_count,
-        progress: `${graduationProgress.mandatory_completed_count}/${graduationProgress.mandatory_total_count}`
+        pass: condition1Passed,
+        completed: mandatoryCompletedCount,
+        total: MANDATORY_TASKS.length,
+        progress: `${mandatoryCompletedCount}/${MANDATORY_TASKS.length}`,
+        completedTasks: completedMandatoryTasks,
+        missingTasks: missingMandatoryTasks.slice(0, 5) // 只显示前5个缺失的
       },
       standard2: {
         name: '第一周第二天下午选做作业标准',
-        pass: graduationProgress.w1d2_afternoon_completed_count >= graduationProgress.w1d2_afternoon_required_count,
-        completed: graduationProgress.w1d2_afternoon_completed_count,
-        required: graduationProgress.w1d2_afternoon_required_count,
-        progress: `${graduationProgress.w1d2_afternoon_completed_count}/${graduationProgress.w1d2_afternoon_required_count}`
+        pass: condition2Passed,
+        completed: w1d2AfternoonCompletedCount,
+        required: 1,
+        progress: `${w1d2AfternoonCompletedCount}/1`,
+        completedTasks: completedW1D2Tasks,
+        availableTasks: W1D2_AFTERNOON_OPTIONAL_TASKS
       },
       standard3: {
-        name: '其他选做作业标准',
-        pass: graduationProgress.other_optional_completed_count >= graduationProgress.other_optional_required_count,
-        completed: graduationProgress.other_optional_completed_count,
-        required: graduationProgress.other_optional_required_count,
-        progress: `${graduationProgress.other_optional_completed_count}/${graduationProgress.other_optional_required_count}`
+        name: '其他选做作业标准', 
+        pass: condition3Passed,
+        completed: otherOptionalCompletedCount,
+        required: 1,
+        progress: `${otherOptionalCompletedCount}/1`,
+        completedTasks: completedOtherTasks.slice(0, 3) // 只显示前3个
       },
-      lastUpdated: graduationProgress.last_updated
+      totalRecords: assignmentRecords.length,
+      lastUpdated: new Date().toISOString()
     }
   };
 }

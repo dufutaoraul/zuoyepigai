@@ -59,8 +59,8 @@ function GraduationCheckContent() {
     setResult(null);
 
     try {
-      // 调用Dify工作流检查毕业资格
-      const response = await fetch('/api/check-graduation', {
+      // 调用Netlify Function检查毕业资格
+      const response = await fetch('/.netlify/functions/check-graduation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
