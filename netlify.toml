@@ -1,21 +1,20 @@
-# 完全绕过插件的配置
+# 强制禁用Next.js插件的配置
 [build]
   command = "npm run build"
   publish = "out"
   
 [build.environment]
   NODE_VERSION = "18"
-  # 强制禁用自动插件检测
+  # 多种方式强制禁用Next.js插件
   NETLIFY_NEXT_PLUGIN_SKIP = "true"
+  DISABLE_NETLIFY_NEXT = "true"
+  NETLIFY_SKIP_PLUGIN_NEXTJS = "true"
 
-# 强制覆盖任何UI设置
-[context.production]
-  publish = "out"
-  command = "npm run build"
-
-[context.deploy-preview]  
-  publish = "out"
-  command = "npm run build"
+# 明确禁用插件 - 覆盖UI设置
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+  [plugins.inputs]
+    disable = true
 
 [functions]
   directory = "netlify/functions"
