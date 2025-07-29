@@ -21,7 +21,8 @@
       "Bash(npx supabase db reset:*)",
       "Bash(psql:*)",
       "Bash(curl:*)",
-      "WebFetch(domain:pigaizuoye.netlify.app)"
+      "WebFetch(domain:pigaizuoye.netlify.app)",
+      "Bash(mv:*)"
     ],
     "deny": []
   }

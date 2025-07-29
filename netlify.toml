@@ -1,9 +1,25 @@
+# 完全绕过插件的配置
 [build]
   command = "npm run build"
   publish = "out"
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- ."
   
 [build.environment]
   NODE_VERSION = "18"
+  # 强制禁用自动插件检测
+  NETLIFY_NEXT_PLUGIN_SKIP = "true"
+
+# 强制覆盖任何UI设置
+[context.production]
+  publish = "out"
+  command = "npm run build"
+
+[context.deploy-preview]  
+  publish = "out"
+  command = "npm run build"
 
 [functions]
   directory = "netlify/functions"
+  
+# 明确禁用所有自动插件
+[plugins]
