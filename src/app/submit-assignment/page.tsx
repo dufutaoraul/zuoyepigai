@@ -251,6 +251,8 @@ export default function SubmitAssignmentPage() {
     setMessage('');
 
     try {
+      console.log('开始提交作业:', { studentId, assignmentId, fileCount: files.length });
+      
       // 上传文件到Supabase存储
       const attachmentUrls: string[] = [];
       
@@ -273,6 +275,8 @@ export default function SubmitAssignmentPage() {
         attachmentUrls.push(publicUrl);
       }
 
+      console.log('文件上传完成:', { attachmentUrls });
+
       // 提交作业记录
       const { error: insertError } = await supabase
         .from('submissions')
@@ -288,6 +292,8 @@ export default function SubmitAssignmentPage() {
         console.error('Database insert error:', insertError);
         throw new Error(`数据库插入失败: ${insertError.message}`);
       }
+
+      console.log('数据库插入成功');
 
       // 触发AI批改（调用Netlify Function）
       try {
