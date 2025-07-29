@@ -135,7 +135,7 @@ function MyAssignmentsContent() {
             body: JSON.stringify({
               studentId,
               assignmentId: submission.assignment_id,
-              attachmentUrls
+              attachmentUrls: finalAttachmentUrls
             })
           });
         } catch (error) {
