@@ -1,8 +1,14 @@
 [build]
   command = "npm run build"
+  # 不设置publish目录，让@netlify/plugin-nextjs处理
   
 [build.environment]
   NODE_VERSION = "18"
 
+# 重要：使用Next.js插件进行部署
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# 明确禁用静态文件处理，因为我们有API路由
+[build.processing]
+  skip_processing = false
