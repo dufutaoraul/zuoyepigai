@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export async function GET() {
+  return NextResponse.json({
+    message: 'DeepSeek format test endpoint',
+    usage: 'This endpoint will automatically test different formats',
+    instruction: 'The test will run automatically'
+  });
+}
+
 export async function POST(request: NextRequest) {
   try {
     console.log('🔍 测试DeepSeek API的不同格式...');
