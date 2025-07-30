@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Netlify 部署配置 - 移除 trailingSlash 避免 API 路由问题
+  // Netlify 部署配置
+  output: 'standalone',
   images: {
     unoptimized: true
   },

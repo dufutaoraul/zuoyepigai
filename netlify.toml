@@ -1,12 +1,10 @@
 [build]
   command = "npm run build"
-  # Next.js 插件会自动处理 publish 目录
+  # Next.js 插件会自动处理 publish 目录和 API Routes
 
-# Next.js 插件配置
+# Next.js 插件配置 - 确保支持 App Router API Routes
 [[plugins]]
   package = "@netlify/plugin-nextjs"
-
-# Next.js 插件会自动处理 API Routes 和重定向
 
 # Headers 配置
 [[headers]]
