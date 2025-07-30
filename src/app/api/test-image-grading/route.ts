@@ -29,9 +29,7 @@ export async function POST(request: NextRequest) {
       },
       {
         type: "image_url",
-        image_url: {
-          url: testImageUrl
-        }
+        image_url: testImageUrl  // 修正为DeepSeek API期望的格式
       }
     ];
 

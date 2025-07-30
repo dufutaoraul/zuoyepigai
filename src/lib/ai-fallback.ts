@@ -61,13 +61,11 @@ ${assignmentDescription}
     }
   ];
 
-  // 添加图片内容
+  // 添加图片内容 - 使用DeepSeek API的正确格式
   for (const imageUrl of attachmentUrls) {
     messageContent.push({
       type: "image_url",
-      image_url: {
-        url: imageUrl
-      }
+      image_url: imageUrl  // DeepSeek可能期望直接是字符串，而不是对象
     });
   }
 
