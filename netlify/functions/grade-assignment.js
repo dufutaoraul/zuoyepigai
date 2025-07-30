@@ -1,23 +1,52 @@
 // Netlify Functions 显式 API 路由
-import { supabase } from './lib/supabase.js';
+const { createClient } = require('@supabase/supabase-js');
 
-export async function handler(event, context) {
+// 创建Supabase客户端
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('Missing Supabase environment variables');
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+exports.handler = async (event, context) => {
+  // 设置CORS头
+  const headers = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+  };
+
+  // 处理 OPTIONS 请求 (CORS 预检)
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: headers,
+      body: ''
+    };
+  }
+
   // 只处理 POST 请求
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
       body: JSON.stringify({ error: 'Method not allowed' }),
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-      }
+      headers: headers
     };
   }
 
   try {
-    console.log('AI批改API被调用');
+    console.log('🚀 AI批改API被调用');
+    console.log('📋 环境变量检查:', {
+      hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      hasSupabaseKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      hasDeepSeekKey: !!process.env.DEEPSEEK_API_KEY,
+      hasDeepSeekModel: !!process.env.DEEPSEEK_MODEL_ID,
+      hasDeepSeekUrl: !!process.env.DEEPSEEK_API_URL
+    });
     
     const { studentId, assignmentId, attachmentUrls } = JSON.parse(event.body);
     console.log('请求参数:', { studentId, assignmentId, attachmentCount: attachmentUrls?.length });
@@ -195,6 +224,10 @@ ${assignmentDescription}
 
   try {
     const startTime = Date.now();
+    
+    // 使用 node-fetch 或原生 fetch (在新版本Node.js中可用)
+    const fetch = globalThis.fetch || require('node-fetch');
+    
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -202,8 +235,8 @@ ${assignmentDescription}
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(requestBody),
-      // 增加超时设置
-      signal: AbortSignal.timeout(30000) // 30秒超时
+      // 设置超时
+      timeout: 30000 // 30秒超时
     });
     
     const responseTime = Date.now() - startTime;
