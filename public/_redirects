@@ -1,2 +1,2 @@
-# Netlify重定向配置，用于Next.js API路由
-/api/* /.netlify/functions/:splat 200
+# Next.js API路由在Netlify上的配置
+# 让Next.js处理所有API路由，不重定向到Netlify Functions

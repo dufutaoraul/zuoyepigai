@@ -17,7 +17,7 @@ service_role key：eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIs
 
 Access Tokens：sbp_fb2a4808682131310487b5a14fe821868a808f12
 
-我的github的仓库地址是：https://github.com/dufutaoraul/pigaizuoye.git
+我的github的仓库地址是：https://github.com/dufutaoraul/gzynew.git
 我要部署到netlify上。
 
 

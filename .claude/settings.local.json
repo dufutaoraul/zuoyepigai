@@ -28,7 +28,10 @@
       "Bash(git tag:*)",
       "Bash(ls:*)",
       "WebFetch(domain:www.volcengine.com)",
-      "WebFetch(domain:console.volcengine.com)"
+      "WebFetch(domain:console.volcengine.com)",
+      "WebFetch(domain:app.netlify.com)",
+      "WebFetch(domain:docs.deepseek.com)",
+      "Bash(dir \"C:\\Users\\Administrator\\Downloads\" /o:d)"
     ],
     "deny": []
   }

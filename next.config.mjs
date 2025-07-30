@@ -6,9 +6,7 @@ const nextConfig = {
     unoptimized: true
   },
   // 支持 API Routes 在 Netlify 上运行
-  experimental: {
-    serverComponentsExternalPackages: ['@supabase/supabase-js']
-  },
+  serverExternalPackages: ['@supabase/supabase-js'],
   // 环境变量配置
   env: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
