@@ -1,6 +1,11 @@
 // Netlify Functions 显式 API 路由
 const { createClient } = require('@supabase/supabase-js');
 
+// 设置函数配置
+exports.config = {
+  timeout: 30 // 30秒超时
+};
+
 // 创建Supabase客户端
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
