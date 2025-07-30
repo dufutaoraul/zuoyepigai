@@ -5,11 +5,11 @@
 [functions]
   node_bundler = "esbuild"
   directory = "netlify/functions"
-  # 设置函数超时时间
-  timeout = 30
-  
-[functions.ai-grade]
-  # 外部依赖包括
+
+[functions."ai-grade"]
+  external_node_modules = ["node-fetch", "@supabase/supabase-js"]
+
+[functions."debug-env"]
   external_node_modules = ["node-fetch", "@supabase/supabase-js"]
 
 # Next.js 插件配置 - 确保支持 App Router API Routes
