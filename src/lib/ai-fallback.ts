@@ -13,13 +13,20 @@ export async function callAIWithFallback(
   
   // 1. 首先尝试DeepSeek
   try {
-    return await callDeepSeekAPI(assignmentDescription, attachmentUrls, assignmentTitle);
+    const result = await callDeepSeekAPI(assignmentDescription, attachmentUrls, assignmentTitle);
+    console.log('✅ DeepSeek API调用成功:', result);
+    return result;
   } catch (error) {
-    console.warn('DeepSeek API失败，尝试备用方案:', error);
+    console.error('❌ DeepSeek API失败，详细错误:', error);
+    console.error('错误类型:', error instanceof Error ? error.name : 'Unknown');
+    console.error('错误消息:', error instanceof Error ? error.message : 'Unknown error');
+    
+    // 暂时直接抛出错误，而不使用后备方案，这样我们能看到具体问题
+    throw error;
   }
 
-  // 2. 如果DeepSeek失败，尝试简单的图片验证
-  return await callFallbackValidation(assignmentDescription, attachmentUrls, assignmentTitle);
+  // 注释掉后备方案，强制显示真实错误
+  // return await callFallbackValidation(assignmentDescription, attachmentUrls, assignmentTitle);
 }
 
 async function callDeepSeekAPI(
