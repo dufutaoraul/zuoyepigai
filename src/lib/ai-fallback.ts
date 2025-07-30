@@ -11,22 +11,109 @@ export async function callAIWithFallback(
   assignmentTitle: string
 ): Promise<AIGradingResult> {
   
-  // 1. 首先尝试DeepSeek
-  try {
-    const result = await callDeepSeekAPI(assignmentDescription, attachmentUrls, assignmentTitle);
-    console.log('✅ DeepSeek API调用成功:', result);
-    return result;
-  } catch (error) {
-    console.error('❌ DeepSeek API失败，详细错误:', error);
-    console.error('错误类型:', error instanceof Error ? error.name : 'Unknown');
-    console.error('错误消息:', error instanceof Error ? error.message : 'Unknown error');
-    
-    // 暂时直接抛出错误，而不使用后备方案，这样我们能看到具体问题
-    throw error;
+  // DeepSeek不支持图片，改为基于文本的批改逻辑
+  console.log('📝 使用文本批改方案 (DeepSeek不支持图片)');
+  
+  return await callTextBasedGrading(assignmentDescription, attachmentUrls, assignmentTitle);
+}
+
+// 基于文本的批改方案（DeepSeek不支持图片）
+async function callTextBasedGrading(
+  assignmentDescription: string,
+  attachmentUrls: string[],
+  assignmentTitle: string
+): Promise<AIGradingResult> {
+  
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  const modelId = process.env.DEEPSEEK_MODEL_ID || 'deepseek-chat';
+  const apiUrl = process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/chat/completions';
+
+  if (!apiKey) {
+    throw new Error('DEEPSEEK_API_KEY未配置');
   }
 
-  // 注释掉后备方案，强制显示真实错误
-  // return await callFallbackValidation(assignmentDescription, attachmentUrls, assignmentTitle);
+  // 构建适合文本批改的提示词
+  const prompt = `你是一个专业的作业批改老师。请根据以下信息进行批改：
+
+**作业标题**: ${assignmentTitle}
+
+**作业要求**: 
+${assignmentDescription}
+
+**学员提交情况**:
+- 学员提交了 ${attachmentUrls.length} 张图片作为作业
+- 由于技术限制，无法直接查看图片内容
+
+**批改指导**:
+基于作业要求的性质，请提供以下批改建议：
+
+1. 如果作业要求是展示操作结果、截图等视觉内容：
+   - 说明"由于技术限制无法查看图片，建议学员补充文字说明或联系助教人工批改"
+   
+2. 如果作业要求相对简单（如简单操作、基础任务）：
+   - 可以假设学员已按要求完成，给予"合格"判定
+   - 但提醒学员确保图片清晰完整
+
+**重要**：
+- 如果判定为"合格"，回复内容包含"合格"字样
+- 如果判定为"不合格"，回复内容包含"不合格"字样
+- 提供具体的反馈建议
+
+请基于作业要求的复杂程度和重要性进行合理批改。`;
+
+  try {
+    const requestBody = {
+      model: modelId,
+      messages: [
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      max_tokens: 500,
+      temperature: 0.3
+    };
+
+    console.log('📤 发送文本批改请求到DeepSeek...');
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(30000)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ DeepSeek文本批改失败:', response.status, errorText);
+      throw new Error(`DeepSeek API调用失败: ${response.status} ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('✅ DeepSeek文本批改成功');
+
+    if (!result.choices || !result.choices[0] || !result.choices[0].message) {
+      throw new Error('DeepSeek API返回格式异常');
+    }
+
+    const aiResponse = result.choices[0].message.content;
+    console.log('🤖 AI批改回复:', aiResponse);
+
+    // 解析AI响应
+    const isQualified = aiResponse.includes('合格') && !aiResponse.includes('不合格');
+
+    return {
+      status: isQualified ? '合格' : '不合格',
+      feedback: aiResponse
+    };
+
+  } catch (error) {
+    console.error('💥 文本批改异常:', error);
+    throw error;
+  }
 }
 
 async function callDeepSeekAPI(
