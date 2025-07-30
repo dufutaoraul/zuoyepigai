@@ -225,8 +225,15 @@ ${assignmentDescription}
   try {
     const startTime = Date.now();
     
-    // 使用 node-fetch 或原生 fetch (在新版本Node.js中可用)
-    const fetch = globalThis.fetch || require('node-fetch');
+    // 使用原生 fetch (Node.js 18+ 支持) 或动态导入 node-fetch
+    let fetch;
+    if (globalThis.fetch) {
+      fetch = globalThis.fetch;
+    } else {
+      // 动态导入 node-fetch (CommonJS 兼容方式)
+      const { default: nodeFetch } = await import('node-fetch');
+      fetch = nodeFetch;
+    }
     
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -234,9 +241,7 @@ ${assignmentDescription}
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(requestBody),
-      // 设置超时
-      timeout: 30000 // 30秒超时
+      body: JSON.stringify(requestBody)
     });
     
     const responseTime = Date.now() - startTime;
