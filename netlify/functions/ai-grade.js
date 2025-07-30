@@ -240,6 +240,9 @@ ${assignmentDescription}
     // 使用动态导入node-fetch
     const { default: fetch } = await import('node-fetch');
     
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -248,8 +251,10 @@ ${assignmentDescription}
         'User-Agent': 'Netlify-Function/1.0'
       },
       body: JSON.stringify(requestBody),
-      timeout: 30000
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
 
     console.log('📨 DeepSeek响应状态:', response.status);
 

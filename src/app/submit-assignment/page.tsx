@@ -295,9 +295,9 @@ export default function SubmitAssignmentPage() {
 
       console.log('数据库插入成功');
 
-      // 触发AI批改（调用Netlify Function）
+      // 触发AI批改（回退到Next.js API Route，因为它在测试中工作正常）
       try {
-        await fetch('/.netlify/functions/ai-grade', {
+        const response = await fetch('/api/grade-assignment', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -308,6 +308,10 @@ export default function SubmitAssignmentPage() {
             attachmentUrls
           })
         });
+        
+        if (!response.ok) {
+          console.error('AI grading API call failed:', response.status);
+        }
       } catch (error) {
         console.error('Error triggering AI grading:', error);
       }
