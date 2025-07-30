@@ -32,6 +32,31 @@ export default function DebugPage() {
     }
   };
 
+  const testDouBaoDetailed = async () => {
+    setLoading(true);
+    setTestResult(null);
+
+    try {
+      const response = await fetch('/api/debug-doubao', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const result = await response.json();
+      setTestResult(result);
+    } catch (error) {
+      setTestResult({
+        success: false,
+        error: 'Network error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const testEnvironmentVariables = () => {
     const envTest = {
       hasNextPublicSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -65,13 +90,22 @@ export default function DebugPage() {
               <p className="text-gray-600 mb-4">
                 测试豆包API的连接状态和环境变量配置
               </p>
-              <button
-                onClick={testDouBaoConnection}
-                disabled={loading}
-                className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? '测试中...' : '测试豆包API连接'}
-              </button>
+              <div className="space-x-3">
+                <button
+                  onClick={testDouBaoConnection}
+                  disabled={loading}
+                  className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? '测试中...' : '快速测试'}
+                </button>
+                <button
+                  onClick={testDouBaoDetailed}
+                  disabled={loading}
+                  className="bg-purple-600 text-white px-6 py-2 rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? '诊断中...' : '详细诊断'}
+                </button>
+              </div>
             </div>
 
             {/* 环境变量检查 */}
