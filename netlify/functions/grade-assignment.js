@@ -12,6 +12,9 @@ if (!supabaseUrl || !supabaseServiceKey) {
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 exports.handler = async (event, context) => {
+  // 设置函数超时
+  context.callbackWaitsForEmptyEventLoop = false;
+  
   // 设置CORS头
   const headers = {
     'Content-Type': 'application/json',
@@ -212,8 +215,9 @@ ${assignmentDescription}
         content: messageContent
       }
     ],
-    max_tokens: 1000,
-    temperature: 0.1
+    max_tokens: 500,
+    temperature: 0.1,
+    stream: false
   };
 
   console.log('调用DeepSeek API开始');
@@ -235,7 +239,12 @@ ${assignmentDescription}
       fetch = nodeFetch;
     }
     
-    const response = await fetch(apiUrl, {
+    // 设置超时控制
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('API调用超时')), 25000); // 25秒超时
+    });
+    
+    const fetchPromise = fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -243,6 +252,8 @@ ${assignmentDescription}
       },
       body: JSON.stringify(requestBody)
     });
+    
+    const response = await Promise.race([fetchPromise, timeoutPromise]);
     
     const responseTime = Date.now() - startTime;
     console.log('DeepSeek API响应时间:', responseTime, 'ms');

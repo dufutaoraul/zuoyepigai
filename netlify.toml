@@ -2,6 +2,11 @@
   command = "npm run build"
   # Next.js 插件会自动处理 publish 目录和 API Routes
 
+[functions]
+  node_bundler = "esbuild"
+  # 设置函数超时为30秒（Netlify免费版最大值）
+  timeout = 30
+
 # Next.js 插件配置 - 确保支持 App Router API Routes
 [[plugins]]
   package = "@netlify/plugin-nextjs"
