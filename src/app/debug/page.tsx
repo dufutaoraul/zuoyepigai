@@ -7,12 +7,12 @@ export default function DebugPage() {
   const [testResult, setTestResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  const testDouBaoConnection = async () => {
+  const testDeepSeekConnection = async () => {
     setLoading(true);
     setTestResult(null);
 
     try {
-      const response = await fetch('/api/test-doubao', {
+      const response = await fetch('/api/test-deepseek', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -82,28 +82,28 @@ export default function DebugPage() {
           </h1>
 
           <div className="grid gap-6">
-            {/* 豆包API连接测试 */}
+            {/* DeepSeek API连接测试 */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                豆包API连接测试
+                DeepSeek API连接测试
               </h2>
               <p className="text-gray-600 mb-4">
-                测试豆包API的连接状态和环境变量配置
+                测试DeepSeek API的连接状态和环境变量配置
               </p>
               <div className="space-x-3">
                 <button
-                  onClick={testDouBaoConnection}
+                  onClick={testDeepSeekConnection}
                   disabled={loading}
                   className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loading ? '测试中...' : '快速测试'}
+                  {loading ? '测试中...' : '测试DeepSeek连接'}
                 </button>
                 <button
                   onClick={testDouBaoDetailed}
                   disabled={loading}
                   className="bg-purple-600 text-white px-6 py-2 rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loading ? '诊断中...' : '详细诊断'}
+                  {loading ? '诊断中...' : '豆包详细诊断(备用)'}
                 </button>
               </div>
             </div>

@@ -26,8 +26,8 @@ export async function POST(request: NextRequest) {
 
     console.log('作业信息:', { title: assignmentData.assignment_title, description: assignmentData.description });
 
-    // 2. 调用豆包AI进行批改
-    const gradingResult = await callDouBaoAPI(assignmentData.description, attachmentUrls, assignmentData.assignment_title);
+    // 2. 调用DeepSeek AI进行批改
+    const gradingResult = await callDeepSeekAPI(assignmentData.description, attachmentUrls, assignmentData.assignment_title);
     
     // 3. 更新数据库
     console.log('开始更新数据库，批改结果:', gradingResult);
@@ -80,13 +80,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// 调用豆包AI API进行批改
-async function callDouBaoAPI(assignmentDescription: string, attachmentUrls: string[], assignmentTitle: string) {
-  const apiKey = process.env.DOUBAO_API_KEY;
-  const modelId = process.env.DOUBAO_MODEL_ID;
-  const apiUrl = process.env.DOUBAO_API_URL;
+// 调用DeepSeek AI API进行批改
+async function callDeepSeekAPI(assignmentDescription: string, attachmentUrls: string[], assignmentTitle: string) {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  const modelId = process.env.DEEPSEEK_MODEL_ID;
+  const apiUrl = process.env.DEEPSEEK_API_URL;
 
-  console.log('豆包API配置检查:', {
+  console.log('DeepSeek API配置检查:', {
     hasApiKey: !!apiKey,
     hasModelId: !!modelId,
     hasApiUrl: !!apiUrl,
@@ -98,10 +98,10 @@ async function callDouBaoAPI(assignmentDescription: string, attachmentUrls: stri
 
   if (!apiKey || !modelId || !apiUrl) {
     const missing = [];
-    if (!apiKey) missing.push('DOUBAO_API_KEY');
-    if (!modelId) missing.push('DOUBAO_MODEL_ID');
-    if (!apiUrl) missing.push('DOUBAO_API_URL');
-    throw new Error(`豆包API配置缺失: ${missing.join(', ')}`);
+    if (!apiKey) missing.push('DEEPSEEK_API_KEY');
+    if (!modelId) missing.push('DEEPSEEK_MODEL_ID');
+    if (!apiUrl) missing.push('DEEPSEEK_API_URL');
+    throw new Error(`DeepSeek API配置缺失: ${missing.join(', ')}`);
   }
 
   // 构建优化的Prompt
@@ -152,9 +152,9 @@ ${assignmentDescription}
     temperature: 0.1
   };
 
-  console.log('调用豆包API开始');
+  console.log('调用DeepSeek API开始');
   console.log('请求URL:', apiUrl);
-  console.log('请求头Authorization:', apiKey.substring(0, 20) + '...');
+  console.log('请求头Authorization:', `Bearer ${apiKey.substring(0, 20)}...`);
   console.log('请求体大小:', JSON.stringify(requestBody).length, 'bytes');
   console.log('消息内容数量:', requestBody.messages[0].content.length);
 
@@ -163,28 +163,28 @@ ${assignmentDescription}
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
-        'Authorization': apiKey,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(requestBody),
       // 增加超时设置
-      signal: AbortSignal.timeout(25000) // 25秒超时
+      signal: AbortSignal.timeout(30000) // 30秒超时
     });
     
     const responseTime = Date.now() - startTime;
-    console.log('豆包API响应时间:', responseTime, 'ms');
+    console.log('DeepSeek API响应时间:', responseTime, 'ms');
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('豆包API调用失败:', response.status, errorText);
-      throw new Error(`豆包API调用失败: ${response.status} ${errorText}`);
+      console.error('DeepSeek API调用失败:', response.status, errorText);
+      throw new Error(`DeepSeek API调用失败: ${response.status} ${errorText}`);
     }
 
     const result = await response.json();
-    console.log('豆包API响应:', result);
+    console.log('DeepSeek API响应:', result);
 
     if (!result.choices || !result.choices[0] || !result.choices[0].message) {
-      throw new Error('豆包API返回格式异常');
+      throw new Error('DeepSeek API返回格式异常');
     }
 
     const aiResponse = result.choices[0].message.content;
@@ -198,7 +198,7 @@ ${assignmentDescription}
     };
 
   } catch (error) {
-    console.error('豆包API调用异常:', error);
+    console.error('DeepSeek API调用异常:', error);
     throw new Error(`AI批改失败: ${error instanceof Error ? error.message : '未知错误'}`);
   }
 }
