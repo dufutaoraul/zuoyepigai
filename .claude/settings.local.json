@@ -31,7 +31,8 @@
       "WebFetch(domain:console.volcengine.com)",
       "WebFetch(domain:app.netlify.com)",
       "WebFetch(domain:docs.deepseek.com)",
-      "Bash(dir \"C:\\Users\\Administrator\\Downloads\" /o:d)"
+      "Bash(dir \"C:\\Users\\Administrator\\Downloads\" /o:d)",
+      "Bash(gh repo view:*)"
     ],
     "deny": []
   }
