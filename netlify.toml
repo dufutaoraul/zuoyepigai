@@ -1,16 +1,6 @@
 [build]
   command = "npm run build"
-  # Next.js 插件会自动处理 publish 目录和 API Routes
-
-[functions]
-  node_bundler = "esbuild"
-  directory = "netlify/functions"
-
-[functions."ai-grade"]
-  external_node_modules = ["node-fetch", "@supabase/supabase-js"]
-
-[functions."debug-env"]
-  external_node_modules = ["node-fetch", "@supabase/supabase-js"]
+  publish = ".next"
 
 # Next.js 插件配置 - 确保支持 App Router API Routes
 [[plugins]]

@@ -1,5 +1,5 @@
-# Next.js App Router 在 Netlify 上的配置
-/api/* /.netlify/functions/__nextjs 200
+# Next.js API Routes 重定向到 Netlify Functions
+/api/* /.netlify/functions/__nextjs/:splat 200
 
-# SPA 回退 - 所有路由交给Next.js处理  
+# 其他所有路由交给 Next.js 处理
 /* /index.html 200

@@ -33,7 +33,8 @@
       "WebFetch(domain:docs.deepseek.com)",
       "Bash(dir \"C:\\Users\\Administrator\\Downloads\" /o:d)",
       "Bash(gh repo view:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(git remote remove:*)"
     ],
     "deny": []
   }
