@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Netlify 部署配置
-  output: 'standalone',
+  // Netlify 部署配置 - 移除standalone模式
   images: {
     unoptimized: true
   },
