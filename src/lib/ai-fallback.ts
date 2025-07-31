@@ -11,9 +11,22 @@ export async function callAIWithFallback(
   assignmentTitle: string
 ): Promise<AIGradingResult> {
   
-  // DeepSeek不支持图片，改为基于文本的批改逻辑
-  console.log('📝 使用文本批改方案 (DeepSeek不支持图片)');
+  // 检查是否配置了豆包API
+  const doubaoApiKey = process.env.DOUBAO_API_KEY;
+  const doubaoApiUrl = process.env.DOUBAO_API_URL;
   
+  if (doubaoApiKey && doubaoApiUrl) {
+    console.log('🔥 使用豆包API进行图片批改');
+    try {
+      return await callDoubaoAPI(assignmentDescription, attachmentUrls, assignmentTitle);
+    } catch (error) {
+      console.error('❌ 豆包API调用失败，回退到文本批改:', error);
+      return await callTextBasedGrading(assignmentDescription, attachmentUrls, assignmentTitle);
+    }
+  }
+  
+  // 回退到文本批改方案
+  console.log('📝 使用文本批改方案 (豆包API未配置)');
   return await callTextBasedGrading(assignmentDescription, attachmentUrls, assignmentTitle);
 }
 
@@ -219,6 +232,116 @@ ${assignmentDescription}
     status: isQualified ? '合格' : '不合格',
     feedback: aiResponse
   };
+}
+
+// 豆包API调用函数
+async function callDoubaoAPI(
+  assignmentDescription: string, 
+  attachmentUrls: string[], 
+  assignmentTitle: string
+): Promise<AIGradingResult> {
+  
+  const apiKey = process.env.DOUBAO_API_KEY;
+  const modelId = process.env.DOUBAO_MODEL_ID || 'doubao-vision';
+  const apiUrl = process.env.DOUBAO_API_URL;
+
+  if (!apiKey || !apiUrl) {
+    throw new Error('豆包API配置不完整 - 缺少API_KEY或API_URL');
+  }
+
+  // 构建专业的作业批改提示词
+  const prompt = `你是一个专业的作业批改老师。请根据以下作业要求判断学员提交的图片作业是否合格。
+
+**作业标题**: ${assignmentTitle}
+
+**详细作业要求**: 
+${assignmentDescription}
+
+**评判标准**:
+- 请仔细查看学员提交的图片内容
+- 判断是否符合上述作业要求
+- 检查操作步骤是否正确
+- 验证结果是否达到预期
+
+**回复格式**:
+- 如果符合要求，请在回复中包含"合格"字样，并简要说明符合的方面
+- 如果不符合要求，请在回复中包含"不合格"字样，详细说明不合格的原因和改进建议
+
+请现在开始批改学员提交的作业图片。`;
+
+  // 构建消息内容，包含文本和图片
+  const messageContent: any[] = [
+    {
+      type: "text",
+      text: prompt
+    }
+  ];
+
+  // 添加图片内容
+  for (const imageUrl of attachmentUrls) {
+    messageContent.push({
+      type: "image_url",
+      image_url: {
+        url: imageUrl
+      }
+    });
+  }
+
+  const requestBody = {
+    model: modelId,
+    messages: [
+      {
+        role: "user",
+        content: messageContent
+      }
+    ],
+    max_tokens: 1000,
+    temperature: 0.1
+  };
+
+  console.log('📤 发送请求到豆包API...');
+  console.log('🖼️ 图片数量:', attachmentUrls.length);
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(60000) // 豆包处理图片可能需要更长时间
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ 豆包API调用失败:', response.status, errorText);
+      throw new Error(`豆包API调用失败: ${response.status} ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('✅ 豆包API调用成功');
+
+    if (!result.choices || !result.choices[0] || !result.choices[0].message) {
+      console.error('❌ 豆包API返回格式异常:', result);
+      throw new Error('豆包API返回格式异常');
+    }
+
+    const aiResponse = result.choices[0].message.content;
+    console.log('🤖 豆包AI批改回复:', aiResponse);
+
+    // 解析AI响应，判断是否合格
+    const isQualified = aiResponse.includes('合格') && !aiResponse.includes('不合格');
+    
+    return {
+      status: isQualified ? '合格' : '不合格',
+      feedback: aiResponse
+    };
+
+  } catch (error) {
+    console.error('💥 豆包API调用异常:', error);
+    throw error;
+  }
 }
 
 // 简单的后备验证（当AI服务不可用时）
