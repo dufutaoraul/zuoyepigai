@@ -1,2 +1,5 @@
-# Next.js API路由在Netlify上的配置
-# 让Next.js处理所有API路由，不重定向到Netlify Functions
+# Next.js App Router 在 Netlify 上的配置
+/api/* /.netlify/functions/__nextjs 200
+
+# SPA 回退 - 所有路由交给Next.js处理  
+/* /index.html 200
