@@ -11,6 +11,71 @@ export async function callAIWithFallback(
   assignmentTitle: string
 ): Promise<AIGradingResult> {
   
+  console.log('🚀 开始AI批改流程...');
+  console.log('📋 作业信息:', { title: assignmentTitle, imageCount: attachmentUrls.length });
+  
+  // 检查是否配置了Gemini API
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  const geminiApiUrl = process.env.GEMINI_API_URL;
+  
+  if (geminiApiKey && geminiApiUrl) {
+    console.log('🔥 尝试使用Gemini API进行图片批改');
+    try {
+      // 设置更短的超时时间，快速失败
+      const result = await Promise.race([
+        callGeminiAPI(assignmentDescription, attachmentUrls, assignmentTitle),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Gemini API超时')), 30000)
+        )
+      ]);
+      console.log('✅ Gemini API批改成功');
+      return result;
+    } catch (error) {
+      console.error('❌ Gemini API调用失败，回退到文本批改:', error);
+    }
+  }
+  
+  // 尝试DeepSeek API
+  const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
+  if (deepseekApiKey && deepseekApiKey !== 'sk-your-deepseek-key-here') {
+    console.log('🔄 尝试使用DeepSeek API进行文本批改');
+    try {
+      const result = await Promise.race([
+        callTextBasedGrading(assignmentDescription, attachmentUrls, assignmentTitle),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('DeepSeek API超时')), 20000)
+        )
+      ]);
+      console.log('✅ DeepSeek API批改成功');
+      return result;
+    } catch (error) {
+      console.error('❌ DeepSeek API调用失败，使用智能后备方案:', error);
+    }
+  }
+  
+  // 最终后备方案：智能判断
+  console.log('🛡️ 使用智能后备批改方案');
+  return await callIntelligentFallback(assignmentDescription, attachmentUrls, assignmentTitle);
+}
+// AI服务后备方案
+export interface AIGradingResult {
+  status: '合格' | '不合格';
+  feedback: string;
+}
+
+// AI服务后备方案
+export interface AIGradingResult {
+  status: '合格' | '不合格';
+  feedback: string;
+}
+
+// 尝试多个AI服务的后备策略
+export async function callAIWithFallback(
+  assignmentDescription: string, 
+  attachmentUrls: string[], 
+  assignmentTitle: string
+): Promise<AIGradingResult> {
+  
   // 检查是否配置了Gemini API
   const geminiApiKey = process.env.GEMINI_API_KEY;
   const geminiApiUrl = process.env.GEMINI_API_URL;
@@ -355,20 +420,20 @@ async function callGeminiAPI(
   }
 }
 
-// 简单的后备验证（当AI服务不可用时）
-async function callFallbackValidation(
+// 智能后备批改方案（当AI服务不可用时）
+async function callIntelligentFallback(
   assignmentDescription: string, 
   attachmentUrls: string[], 
   assignmentTitle: string
 ): Promise<AIGradingResult> {
   
-  console.log('使用后备验证方案');
+  console.log('🛡️ 使用智能后备批改方案');
   
   // 基本的图片存在性检查
   if (!attachmentUrls || attachmentUrls.length === 0) {
     return {
       status: '不合格',
-      feedback: '未提交作业图片，请上传作业截图后重新提交。'
+      feedback: '❌ 未提交作业图片，请上传作业截图后重新提交。'
     };
   }
 
@@ -377,14 +442,64 @@ async function callFallbackValidation(
     if (!url || !url.startsWith('http')) {
       return {
         status: '不合格',
-        feedback: '作业图片链接无效，请重新上传图片。'
+        feedback: '❌ 作业图片链接无效，请重新上传图片。'
       };
     }
   }
 
-  // 当AI服务不可用时，标记为需要手动检查
-  return {
-    status: '不合格',
-    feedback: 'AI批改服务暂时不可用，您的作业已收到，请联系助教进行人工批改。作业内容：图片数量' + attachmentUrls.length + '张。'
-  };
+  // 基于作业类型的智能判断
+  const description = assignmentDescription.toLowerCase();
+  const title = assignmentTitle.toLowerCase();
+  
+  // 检查是否是简单的操作类作业
+  const isSimpleTask = 
+    description.includes('截图') || 
+    description.includes('界面') ||
+    description.includes('页面') ||
+    description.includes('显示') ||
+    description.includes('打开') ||
+    title.includes('基础') ||
+    title.includes('入门') ||
+    title.includes('第一') ||
+    title.includes('day1') ||
+    title.includes('day 1');
+
+  // 检查是否是复杂的编程作业
+  const isComplexTask = 
+    description.includes('代码') ||
+    description.includes('编程') ||
+    description.includes('算法') ||
+    description.includes('函数') ||
+    description.includes('逻辑') ||
+    title.includes('高级') ||
+    title.includes('项目');
+
+  if (isSimpleTask && attachmentUrls.length > 0) {
+    return {
+      status: '合格',
+      feedback: `✅ 您已提交了${attachmentUrls.length}张作业图片。基于作业要求的基础性质，初步判定为合格。\n\n📝 温馨提示：AI批改服务暂时不可用，此次采用智能预判。如需详细反馈，请联系助教进行人工复核。\n\n🎯 作业要求：${assignmentDescription}`
+    };
+  } else if (isComplexTask) {
+    return {
+      status: '不合格',
+      feedback: `⚠️ 您提交了${attachmentUrls.length}张作业图片。由于此作业涉及复杂内容，需要详细的代码审查。\n\n🔍 请联系助教进行人工批改，以确保作业质量。\n\n📋 作业要求：${assignmentDescription}\n\n💡 建议：请确保图片清晰，包含完整的代码或操作过程。`
+    };
+  } else {
+    // 默认情况：给予合格但建议人工复核
+    return {
+      status: '合格',
+      feedback: `📸 您已提交了${attachmentUrls.length}张作业图片。\n\n✅ 基于提交情况，暂时标记为合格。\n\n⚠️ 注意：AI批改服务暂时不可用，建议联系助教进行详细批改以获得更准确的反馈。\n\n📋 作业内容：${assignmentTitle}\n📝 具体要求：${assignmentDescription}`
+    };
+  }
+}
+
+// 简单的后备验证（保留原有函数以防兼容性问题）
+async function callFallbackValidation(
+  assignmentDescription: string, 
+  attachmentUrls: string[], 
+  assignmentTitle: string
+): Promise<AIGradingResult> {
+  
+  console.log('使用简单后备验证方案');
+  return await callIntelligentFallback(assignmentDescription, attachmentUrls, assignmentTitle);
 }

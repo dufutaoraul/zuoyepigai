@@ -3,10 +3,14 @@ import { supabase } from '@/lib/supabase';
 import { callAIWithFallback } from '@/lib/ai-fallback';
 
 export async function POST(request: NextRequest) {
+  let requestData: any = null;
+  
   try {
     console.log('AI批改API被调用');
     
-    const { studentId, assignmentId, attachmentUrls } = await request.json();
+    // 先解析请求数据，避免在catch中重复解析
+    requestData = await request.json();
+    const { studentId, assignmentId, attachmentUrls } = requestData;
     console.log('请求参数:', { studentId, assignmentId, attachmentCount: attachmentUrls?.length });
 
     if (!studentId || !assignmentId || !attachmentUrls || attachmentUrls.length === 0) {
@@ -58,20 +62,22 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('API错误:', error);
     
-    // 如果出错，将状态更新为批改失败
-    try {
-      await supabase
-        .from('submissions')
-        .update({
-          status: '批改失败',
-          feedback: `批改过程出错：${error instanceof Error ? error.message : '未知错误'}`
-        })
-        .eq('student_id', request.json().then(data => data.studentId))
-        .eq('assignment_id', request.json().then(data => data.assignmentId))
-        .order('created_at', { ascending: false })
-        .limit(1);
-    } catch (dbError) {
-      console.error('更新失败状态时出错:', dbError);
+    // 如果出错，将状态更新为批改失败（使用已解析的数据）
+    if (requestData?.studentId && requestData?.assignmentId) {
+      try {
+        await supabase
+          .from('submissions')
+          .update({
+            status: '批改失败',
+            feedback: `批改过程出错：${error instanceof Error ? error.message : '未知错误'}`
+          })
+          .eq('student_id', requestData.studentId)
+          .eq('assignment_id', requestData.assignmentId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+      } catch (dbError) {
+        console.error('更新失败状态时出错:', dbError);
+      }
     }
 
     return NextResponse.json({ 
