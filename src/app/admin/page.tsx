@@ -228,33 +228,38 @@ export default function AdminPage() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">学号</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">姓名</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">时间</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">作业</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">类型</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">附件</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AI评估</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">毕业状态</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">第几天</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">具体作业</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">必做/选做</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">作业详细要求</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">学员提交的作业</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AI的作业评估</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">毕业合格统计</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredSubmissions.map((submission) => (
                   <tr key={submission.submission_id} className="hover:bg-gray-50">
+                    {/* 学号 */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {submission.student_id}
                     </td>
+                    {/* 姓名 */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {submission.student_name}
                     </td>
+                    {/* 第几天 */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {submission.day_text}
                     </td>
+                    {/* 具体作业 */}
                     <td className="px-6 py-4 text-sm text-gray-900">
                       <div className="max-w-xs">
                         <div className="font-medium">{submission.assignment_title}</div>
-                        <div className="text-gray-500 text-xs mt-1 truncate">{submission.description}</div>
                       </div>
                     </td>
+                    {/* 必做/选做 */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         submission.is_mandatory 
@@ -264,6 +269,15 @@ export default function AdminPage() {
                         {submission.is_mandatory ? '必做' : '选做'}
                       </span>
                     </td>
+                    {/* 作业详细要求 */}
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      <div className="max-w-xs">
+                        <div className="text-gray-600 text-xs truncate" title={submission.description}>
+                          {submission.description || '无详细要求'}
+                        </div>
+                      </div>
+                    </td>
+                    {/* 学员提交的作业 */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       <div className="flex flex-col gap-1">
                         {submission.attachments_url.map((url, index) => (
@@ -277,8 +291,12 @@ export default function AdminPage() {
                             📎 附件{index + 1}
                           </a>
                         ))}
+                        {submission.attachments_url.length === 0 && (
+                          <span className="text-gray-400 text-xs">暂无附件</span>
+                        )}
                       </div>
                     </td>
+                    {/* AI的作业评估 */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -296,6 +314,7 @@ export default function AdminPage() {
                         )}
                       </div>
                     </td>
+                    {/* 毕业合格统计 */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       {submission.graduation_status ? (
                         <div>
@@ -314,6 +333,7 @@ export default function AdminPage() {
                         <span className="text-xs text-gray-400">计算中...</span>
                       )}
                     </td>
+                    {/* 操作 */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
                         onClick={() => deleteSubmission(submission.submission_id)}

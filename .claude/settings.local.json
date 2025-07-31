@@ -34,7 +34,9 @@
       "Bash(dir \"C:\\Users\\Administrator\\Downloads\" /o:d)",
       "Bash(gh repo view:*)",
       "Bash(pkill:*)",
-      "Bash(git remote remove:*)"
+      "Bash(git remote remove:*)",
+      "WebFetch(domain:zuoyepigai.netlify.app)",
+      "Bash(python:*)"
     ],
     "deny": []
   }
