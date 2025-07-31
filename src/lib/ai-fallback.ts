@@ -270,13 +270,8 @@ ${assignmentDescription}
 请现在开始批改学员提交的作业图片。`;
 
   // 构建Gemini API的请求格式
-  const contents = [
-    {
-      role: "user",
-      parts: [
-        { text: prompt }
-      ]
-    }
+  const parts: any[] = [
+    { text: prompt }
   ];
 
   // 添加图片内容 - 需要先转换为base64
@@ -293,7 +288,7 @@ ${assignmentDescription}
       const base64Data = Buffer.from(imageBuffer).toString('base64');
       const mimeType = imageResponse.headers.get('content-type') || 'image/jpeg';
       
-      contents[0].parts.push({
+      parts.push({
         inlineData: {
           mimeType: mimeType,
           data: base64Data
@@ -303,6 +298,13 @@ ${assignmentDescription}
       console.warn(`⚠️ 处理图片失败: ${imageUrl}`, error);
     }
   }
+
+  const contents = [
+    {
+      role: "user",
+      parts: parts
+    }
+  ];
 
   const requestBody = {
     contents: contents,
