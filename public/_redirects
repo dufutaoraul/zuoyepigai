@@ -1,5 +1,0 @@
-# Next.js API Routes 重定向到 Netlify Functions
-/api/* /.netlify/functions/__nextjs/:splat 200
-
-# 其他所有路由交给 Next.js 处理
-/* /index.html 200
