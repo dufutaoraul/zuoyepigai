@@ -12,10 +12,7 @@ const nextConfig = {
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   },
   // Netlify适配
-  trailingSlash: false,
-  experimental: {
-    serverComponentsExternalPackages: ['@supabase/supabase-js']
-  }
+  trailingSlash: false
 };
 
 export default nextConfig;

@@ -19,3 +19,24 @@
  ✓ Starting...
  ✓ Ready in 2.8s
  ⚠ Found a change in next.config.mjs. Restarting the server to apply the changes...
+   ▲ Next.js 15.4.4
+   - Local:        http://localhost:3001
+   - Network:      http://192.168.0.102:3001
+   - Environments: .env.local
+   - Experiments (use with caution):
+     · serverComponentsExternalPackages
+
+ ✓ Starting...
+ ⚠ Invalid next.config.mjs options detected: 
+ ⚠     Unrecognized key(s) in object: 'serverComponentsExternalPackages' at "experimental"
+ ⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+ ⚠ `experimental.serverComponentsExternalPackages` has been moved to `serverExternalPackages`. Please update your next.config.mjs file accordingly.
+ ✓ Ready in 2.5s
+ ⚠ Found a change in next.config.mjs. Restarting the server to apply the changes...
+   ▲ Next.js 15.4.4
+   - Local:        http://localhost:3001
+   - Network:      http://192.168.0.102:3001
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 1938ms
