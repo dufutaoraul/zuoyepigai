@@ -11,22 +11,22 @@ export async function callAIWithFallback(
   assignmentTitle: string
 ): Promise<AIGradingResult> {
   
-  // 检查是否配置了豆包API
-  const doubaoApiKey = process.env.DOUBAO_API_KEY;
-  const doubaoApiUrl = process.env.DOUBAO_API_URL;
+  // 检查是否配置了Gemini API
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  const geminiApiUrl = process.env.GEMINI_API_URL;
   
-  if (doubaoApiKey && doubaoApiUrl) {
-    console.log('🔥 使用豆包API进行图片批改');
+  if (geminiApiKey && geminiApiUrl) {
+    console.log('🔥 使用Gemini API进行图片批改');
     try {
-      return await callDoubaoAPI(assignmentDescription, attachmentUrls, assignmentTitle);
+      return await callGeminiAPI(assignmentDescription, attachmentUrls, assignmentTitle);
     } catch (error) {
-      console.error('❌ 豆包API调用失败，回退到文本批改:', error);
+      console.error('❌ Gemini API调用失败，回退到文本批改:', error);
       return await callTextBasedGrading(assignmentDescription, attachmentUrls, assignmentTitle);
     }
   }
   
   // 回退到文本批改方案
-  console.log('📝 使用文本批改方案 (豆包API未配置)');
+  console.log('📝 使用文本批改方案 (Gemini API未配置)');
   return await callTextBasedGrading(assignmentDescription, attachmentUrls, assignmentTitle);
 }
 
@@ -234,19 +234,19 @@ ${assignmentDescription}
   };
 }
 
-// 豆包API调用函数
-async function callDoubaoAPI(
+// Gemini API调用函数
+async function callGeminiAPI(
   assignmentDescription: string, 
   attachmentUrls: string[], 
   assignmentTitle: string
 ): Promise<AIGradingResult> {
   
-  const apiKey = process.env.DOUBAO_API_KEY;
-  const modelId = process.env.DOUBAO_MODEL_ID || 'doubao-vision';
-  const apiUrl = process.env.DOUBAO_API_URL;
+  const apiKey = process.env.GEMINI_API_KEY;
+  const modelId = process.env.GEMINI_MODEL_ID || 'gemini-1.5-flash';
+  const apiUrl = process.env.GEMINI_API_URL || `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent`;
 
-  if (!apiKey || !apiUrl) {
-    throw new Error('豆包API配置不完整 - 缺少API_KEY或API_URL');
+  if (!apiKey) {
+    throw new Error('Gemini API配置不完整 - 缺少GEMINI_API_KEY');
   }
 
   // 构建专业的作业批改提示词
@@ -269,66 +269,78 @@ ${assignmentDescription}
 
 请现在开始批改学员提交的作业图片。`;
 
-  // 构建消息内容，包含文本和图片
-  const messageContent: any[] = [
+  // 构建Gemini API的请求格式
+  const contents = [
     {
-      type: "text",
-      text: prompt
+      role: "user",
+      parts: [
+        { text: prompt }
+      ]
     }
   ];
 
-  // 添加图片内容
+  // 添加图片内容 - 需要先转换为base64
   for (const imageUrl of attachmentUrls) {
-    messageContent.push({
-      type: "image_url",
-      image_url: {
-        url: imageUrl
+    try {
+      // 获取图片数据并转换为base64
+      const imageResponse = await fetch(imageUrl);
+      if (!imageResponse.ok) {
+        console.warn(`⚠️ 无法获取图片: ${imageUrl}`);
+        continue;
       }
-    });
+      
+      const imageBuffer = await imageResponse.arrayBuffer();
+      const base64Data = Buffer.from(imageBuffer).toString('base64');
+      const mimeType = imageResponse.headers.get('content-type') || 'image/jpeg';
+      
+      contents[0].parts.push({
+        inlineData: {
+          mimeType: mimeType,
+          data: base64Data
+        }
+      });
+    } catch (error) {
+      console.warn(`⚠️ 处理图片失败: ${imageUrl}`, error);
+    }
   }
 
   const requestBody = {
-    model: modelId,
-    messages: [
-      {
-        role: "user",
-        content: messageContent
-      }
-    ],
-    max_tokens: 1000,
-    temperature: 0.1
+    contents: contents,
+    generationConfig: {
+      maxOutputTokens: 1000,
+      temperature: 0.1
+    }
   };
 
-  console.log('📤 发送请求到豆包API...');
+  console.log('📤 发送请求到Gemini API...');
   console.log('🖼️ 图片数量:', attachmentUrls.length);
 
   try {
-    const response = await fetch(apiUrl, {
+    const response = await fetch(`${apiUrl}?key=${apiKey}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(requestBody),
-      signal: AbortSignal.timeout(60000) // 豆包处理图片可能需要更长时间
+      signal: AbortSignal.timeout(60000) // Gemini处理图片可能需要更长时间
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ 豆包API调用失败:', response.status, errorText);
-      throw new Error(`豆包API调用失败: ${response.status} ${errorText}`);
+      console.error('❌ Gemini API调用失败:', response.status, errorText);
+      throw new Error(`Gemini API调用失败: ${response.status} ${errorText}`);
     }
 
     const result = await response.json();
-    console.log('✅ 豆包API调用成功');
+    console.log('✅ Gemini API调用成功');
 
-    if (!result.choices || !result.choices[0] || !result.choices[0].message) {
-      console.error('❌ 豆包API返回格式异常:', result);
-      throw new Error('豆包API返回格式异常');
+    if (!result.candidates || !result.candidates[0] || !result.candidates[0].content) {
+      console.error('❌ Gemini API返回格式异常:', result);
+      throw new Error('Gemini API返回格式异常');
     }
 
-    const aiResponse = result.choices[0].message.content;
-    console.log('🤖 豆包AI批改回复:', aiResponse);
+    const aiResponse = result.candidates[0].content.parts[0].text;
+    console.log('🤖 Gemini AI批改回复:', aiResponse);
 
     // 解析AI响应，判断是否合格
     const isQualified = aiResponse.includes('合格') && !aiResponse.includes('不合格');
@@ -339,7 +351,7 @@ ${assignmentDescription}
     };
 
   } catch (error) {
-    console.error('💥 豆包API调用异常:', error);
+    console.error('💥 Gemini API调用异常:', error);
     throw error;
   }
 }
