@@ -43,11 +43,13 @@ export async function POST(request: NextRequest) {
       
       console.log('FormData解析成功');
       console.log('接收到文件数量:', files.length);
-      console.log('文件详情:', files.map(f => ({ 
-        name: f.name, 
-        size: f.size, 
-        type: f.type,
-        isFile: f instanceof File
+      console.log('文件详情:', files.map((f, index) => ({ 
+        index,
+        name: (f as any).name, 
+        size: (f as any).size, 
+        type: (f as any).type,
+        constructor: f ? f.constructor.name : 'null',
+        hasArrayBuffer: typeof (f as any).arrayBuffer === 'function'
       })));
       
     } catch (formError) {

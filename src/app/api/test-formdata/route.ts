@@ -20,19 +20,23 @@ export async function POST(request: NextRequest) {
     console.log('Files count:', files.length);
     
     const fileDetails = files.map((file, index) => {
-      if (file instanceof File) {
+      // 在服务器端，File对象实际上是特殊的对象
+      if (file && typeof file === 'object' && 'name' in file && 'size' in file) {
         return {
           index,
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          isFile: true
+          name: (file as any).name,
+          size: (file as any).size,
+          type: (file as any).type,
+          isFile: true,
+          constructor: file.constructor.name
         };
       } else {
         return {
           index,
-          value: file,
-          isFile: false
+          value: typeof file === 'string' ? file : String(file),
+          isFile: false,
+          type: typeof file,
+          constructor: file ? file.constructor.name : 'null'
         };
       }
     });
