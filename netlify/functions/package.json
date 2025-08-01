@@ -1,0 +1,10 @@
+{
+  "name": "netlify-functions",
+  "version": "1.0.0",
+  "description": "Netlify Functions for AI grading",
+  "main": "ai-grade.js",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.7",
+    "node-fetch": "^3.3.2"
+  }
+}

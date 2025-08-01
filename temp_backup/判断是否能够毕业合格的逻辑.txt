@@ -1,0 +1,201 @@
+# Coze 代码节点 Python 脚本 - 新课程版本（最新要求）
+import json # 确保导入了json库
+
+def parse_assignment_string(assignment_str):
+    """将单条作业记录字符串解析为字典"""
+    # 使用半角连字符和空格作为分隔符
+    parts = [p.strip() for p in assignment_str.split(' - ')]
+    if len(parts) == 4:
+        return {
+            'time': parts[0],        # 时间段，如"第一周第一天"、"第一周第二天上午"
+            'task_name': parts[1],   # 任务名称
+            'type': parts[2],        # 必做/选做/进阶 (可算在10个项目里)
+            'status': parts[3]       # 合格/不合格
+        }
+    return None
+
+def check_graduation_eligibility_new(assignment_records_list):
+    """
+    根据最新课程要求，判断学生是否可以毕业。
+    毕业标准：
+    1. 所有必做的作业必须全部合格
+    2. 第一周第二天下午的四个选做作业必须至少合格一个
+    3. 除"第一周第二天下午"四个选做作业以外的"其他选做作业"必须至少合格一个
+    """
+    parsed_assignments = []
+    if not isinstance(assignment_records_list, list): 
+        assignment_records_list = [] 
+
+    for record_str in assignment_records_list:
+        if not isinstance(record_str, str): 
+            continue
+        # 调用 parse_assignment_string
+        parsed = parse_assignment_string(record_str)
+        if parsed:
+            parsed_assignments.append(parsed)
+
+    # 只保留合格的任务（忽略所有不合格的内容）
+    qualified_assignments = [task for task in parsed_assignments if task['status'] == '合格']
+
+    # --- 条件1: 必做任务检查 ---
+    # 根据最新数据，提取所有必做任务
+    MANDATORY_TASKS = [
+        "三项全能作品集",
+        "遇事不决问AI",
+        "AI让生活更美好",
+        "综合问答练习",
+        "用netlify部署自己的网站",
+        "小微智能体上线",
+        "生成历史视频",
+        "拆解小红书账号",
+        "生成小红书图文",
+        "改编历史视频工作流",
+        "复制拆解小红书账号工作流",
+        "复制生成小红书图文工作流",
+        "开启AI全球化之路",
+        "油管账号注册",
+        "情绪驱动设计账号",
+        "分析对标出报告",
+        "金句卡片生成器插件",
+        "创建dify机器人",
+        "n8n本地部署",
+        "cursor安装Supabase MCP数据库",
+        "改编扣子官方模板应用",
+        "改编官方其他应用模板",
+        "按模板做UI前端界面",
+        "API接入小程序",
+        "N8N辩论工作流",
+        "N8N新闻播报",
+        "用SupabaseMCP搭建商业网站",
+        "调用封装MCP服务"
+    ]
+
+    # 检查必做任务完成情况
+    completed_mandatory = []
+    missing_mandatory = []
+    
+    for task in qualified_assignments:
+        if task['type'] == '必做' and task['task_name'] in MANDATORY_TASKS:
+            completed_mandatory.append(task['task_name'])
+    
+    # 找出缺失的必做任务
+    completed_mandatory_set = set(completed_mandatory)
+    for required_task in MANDATORY_TASKS:
+        if required_task not in completed_mandatory_set:
+            missing_mandatory.append(required_task)
+
+    condition1_passed = len(missing_mandatory) == 0
+    condition1_report_status = "通过" if condition1_passed else "未通过"
+    
+    if condition1_passed:
+        condition1_report_detail = f"已完成所有{len(MANDATORY_TASKS)}个必做任务"
+    else:
+        condition1_report_detail = f"缺少必做任务：{', '.join(missing_mandatory[:3])}{'...' if len(missing_mandatory) > 3 else ''} (共缺少{len(missing_mandatory)}个)"
+
+    condition1_final_report = f"{condition1_report_status}, {condition1_report_detail}"
+
+    # --- 条件2: 第一周第二天下午选做任务检查 ---
+    # 第一周第二天下午的四个选做任务
+    WEEK1_DAY2_AFTERNOON_OPTIONAL_TASKS = [
+        "AI能力坐标定位",
+        "爱学一派逆向工程分析", 
+        "AI工作流挑战赛",
+        "四步冲刺挑战"
+    ]
+    
+    week1_day2_afternoon_completed = []
+    for task in qualified_assignments:
+        if (task['time'] == '第一周第二天下午' and 
+            task['type'] == '选做'):
+            week1_day2_afternoon_completed.append(task['task_name'])
+
+    condition2_passed = len(week1_day2_afternoon_completed) >= 1
+    condition2_report_status = "通过" if condition2_passed else "未通过"
+    
+    if condition2_passed:
+        condition2_report_detail = f"第一周第二天下午已完成选做任务：{', '.join(week1_day2_afternoon_completed)}"
+    else:
+        condition2_report_detail = "第一周第二天下午未完成任何选做任务"
+
+    condition2_final_report = f"{condition2_report_status}, {condition2_report_detail}"
+
+    # --- 条件3: 其他选做任务检查 ---
+    # 除第一周第二天下午外的其他选做任务
+    other_optional_completed = []
+    for task in qualified_assignments:
+        if (task['type'] == '选做' and 
+            not (task['time'] == '第一周第二天下午' and task['task_name'] in WEEK1_DAY2_AFTERNOON_OPTIONAL_TASKS)):
+            other_optional_completed.append(f"{task['time']} - {task['task_name']}")
+
+    condition3_passed = len(other_optional_completed) >= 1
+    condition3_report_status = "通过" if condition3_passed else "未通过"
+    
+    if condition3_passed:
+        condition3_report_detail = f"其他选做任务已完成：{', '.join(other_optional_completed[:3])}{'...' if len(other_optional_completed) > 3 else ''} (共{len(other_optional_completed)}个)"
+    else:
+        condition3_report_detail = "除第一周第二天下午外，未完成任何其他选做任务"
+
+    condition3_final_report = f"{condition3_report_status}, {condition3_report_detail}"
+
+    # --- 综合判断 ---
+    if condition1_passed and condition2_passed and condition3_passed:
+        return "可以毕业"
+    else:
+        reasons = [
+            "不能毕业，原因如下：",
+            f"条件1 - 必做任务检查：[{condition1_final_report}]",
+            f"条件2 - 第一周第二天下午选做任务检查：[{condition2_final_report}]",
+            f"条件3 - 其他选做任务检查：[{condition3_final_report}]"
+        ]
+        return "\n".join(reasons)
+
+# Coze 平台的主入口函数
+def main(args):
+    # 1. 获取从Coze代码节点输入参数配置中传递过来的、包含所有字段的JSON字符串
+    fields_json_string = args.params.get('raw_assignments_string', None)
+
+    actual_assignments_text = None
+
+    if fields_json_string and isinstance(fields_json_string, str):
+        try:
+            # 2. 解析这个最外层的JSON字符串，得到包含所有字段的Python字典
+            fields_data = json.loads(fields_json_string)
+            
+            # 3. 从字典中获取 "作业统计" 字段的值
+            assignments_field_value = fields_data.get('作业统计', None)
+            
+            # 4. 从飞书特有的复杂JSON结构中提取出真正的作业文本
+            if assignments_field_value:
+                if isinstance(assignments_field_value, dict) and \
+                   'value' in assignments_field_value and \
+                   isinstance(assignments_field_value['value'], list):
+                    raw_texts = []
+                    for item_detail in assignments_field_value['value']:
+                        if isinstance(item_detail, dict) and 'text' in item_detail:
+                            raw_texts.append(item_detail['text'])
+                    actual_assignments_text = "".join(raw_texts)
+                elif isinstance(assignments_field_value, list) and \
+                     len(assignments_field_value) > 0 and \
+                     isinstance(assignments_field_value[0], dict) and \
+                     'text' in assignments_field_value[0]:
+                    raw_texts = []
+                    for item_detail in assignments_field_value:
+                         if isinstance(item_detail, dict) and 'text' in item_detail:
+                            raw_texts.append(item_detail['text'])
+                    actual_assignments_text = "".join(raw_texts)
+                elif isinstance(assignments_field_value, str):
+                    actual_assignments_text = assignments_field_value
+        except json.JSONDecodeError:
+            actual_assignments_text = None 
+    
+    processed_assignments_list = []
+    if actual_assignments_text and isinstance(actual_assignments_text, str):
+        # 5. 将提取并拼接好的、逗号分隔的作业字符串，转换为Python列表
+        processed_assignments_list = [item.strip() for item in actual_assignments_text.split(',') if item.strip()]
+    
+    # 6. 调用新的毕业资格判断函数
+    result_message = check_graduation_eligibility_new(processed_assignments_list)
+
+    # 7. 打印结果
+    print(result_message)
+    return {"print": result_message}
