@@ -253,27 +253,24 @@ export default function SubmitAssignmentPage() {
     try {
       console.log('开始提交作业:', { studentId, assignmentId, fileCount: files.length });
       
-      // 上传文件到Supabase存储
-      const attachmentUrls: string[] = [];
-      
-      for (const file of files) {
-        const cleanFileName = sanitizeFileName(file.name);
-        const fileName = `${Date.now()}-${cleanFileName}`;
-        const { data, error } = await supabase.storage
-          .from('assignments')
-          .upload(fileName, file);
-        
-        if (error) {
-          console.error('File upload error:', error);
-          throw new Error(`文件上传失败: ${error.message}`);
-        }
-        
-        const { data: { publicUrl } } = supabase.storage
-          .from('assignments')
-          .getPublicUrl(fileName);
-        
-        attachmentUrls.push(publicUrl);
+      // 上传文件到Google Cloud Storage
+      const formData = new FormData();
+      files.forEach(file => {
+        formData.append('files', file);
+      });
+
+      const uploadResponse = await fetch('/api/upload-files', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json();
+        throw new Error(`文件上传失败: ${errorData.error || '未知错误'}`);
       }
+
+      const uploadResult = await uploadResponse.json();
+      const attachmentUrls: string[] = uploadResult.urls;
 
       console.log('文件上传完成:', { attachmentUrls });
 
