@@ -292,9 +292,17 @@ export default function SubmitAssignmentPage() {
 
       console.log('文件上传完成:', { attachmentUrls });
 
-      // 提交作业记录 - 最基础的字段测试
+      // 提交作业记录 - 使用正确的中文字段名
       const submissionData = {
-        student_id: studentId,
+        学号: studentId,
+        姓名: studentName || '',
+        第几天: selectedAssignment ? getDayTextFromAssignment(selectedAssignment) : '',
+        具体作业: selectedAssignment?.assignment_title || '',
+        '必做/选做': selectedAssignment?.is_mandatory ? '必做' : '选做',
+        作业详细要求: selectedAssignment?.description || '',
+        学员提交的作业: attachmentUrls,
+        'AI的作业评估': '待批改',
+        毕业合格统计: '待评估',
         assignment_id: assignmentId,
         attachments_url: attachmentUrls
       };
