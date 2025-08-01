@@ -79,13 +79,19 @@ class GoogleCloudStorage {
         });
         console.log('file.save()调用成功');
         
-        // 设置文件为公共可读
-        console.log('设置文件为公共可读...');
-        await file.makePublic();
-        console.log('文件设置为公共可读成功');
+        // 检查是否启用了统一存储桶级访问
+        try {
+          console.log('尝试设置文件为公共可读...');
+          await file.makePublic();
+          console.log('文件设置为公共可读成功');
+        } catch (aclError) {
+          console.log('无法设置单个文件权限，可能启用了统一存储桶级访问:', aclError instanceof Error ? aclError.message : aclError);
+          // 这不是致命错误，文件已经上传成功
+          // 如果存储桶配置了公共访问，文件仍然可以被访问
+        }
         
       } catch (saveError) {
-        console.error('file.save()或makePublic()失败:', saveError);
+        console.error('file.save()失败:', saveError);
         throw saveError;
       }
 
