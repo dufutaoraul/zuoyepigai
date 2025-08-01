@@ -57,43 +57,6 @@ export async function callAIWithFallback(
   console.log('🛡️ 使用智能后备批改方案');
   return await callIntelligentFallback(assignmentDescription, attachmentUrls, assignmentTitle);
 }
-// AI服务后备方案
-export interface AIGradingResult {
-  status: '合格' | '不合格';
-  feedback: string;
-}
-
-// AI服务后备方案
-export interface AIGradingResult {
-  status: '合格' | '不合格';
-  feedback: string;
-}
-
-// 尝试多个AI服务的后备策略
-export async function callAIWithFallback(
-  assignmentDescription: string, 
-  attachmentUrls: string[], 
-  assignmentTitle: string
-): Promise<AIGradingResult> {
-  
-  // 检查是否配置了Gemini API
-  const geminiApiKey = process.env.GEMINI_API_KEY;
-  const geminiApiUrl = process.env.GEMINI_API_URL;
-  
-  if (geminiApiKey && geminiApiUrl) {
-    console.log('🔥 使用Gemini API进行图片批改');
-    try {
-      return await callGeminiAPI(assignmentDescription, attachmentUrls, assignmentTitle);
-    } catch (error) {
-      console.error('❌ Gemini API调用失败，回退到文本批改:', error);
-      return await callTextBasedGrading(assignmentDescription, attachmentUrls, assignmentTitle);
-    }
-  }
-  
-  // 回退到文本批改方案
-  console.log('📝 使用文本批改方案 (Gemini API未配置)');
-  return await callTextBasedGrading(assignmentDescription, attachmentUrls, assignmentTitle);
-}
 
 // 基于文本的批改方案（DeepSeek不支持图片）
 async function callTextBasedGrading(
@@ -314,35 +277,44 @@ async function callGeminiAPI(
     throw new Error('Gemini API配置不完整 - 缺少GEMINI_API_KEY');
   }
 
-  // 构建宽松友好的作业批改提示词
-  const prompt = `根据作业详细要求，判断收到的图片是否符合要求。
+  console.log('📤 发送请求到Gemini API...');
+  console.log('🖼️ 图片数量:', attachmentUrls.length);
+
+  // 构建友好的作业批改提示词
+  const prompt = `你是一位专业且友善的作业批改老师。请根据以下要求批改学员提交的图片作业：
+
+**作业标题**: ${assignmentTitle}
 
 **作业要求**: ${assignmentDescription}
 
-**批改标准** (宽松评估):
-- 如果图片中显示了与作业要求相关的界面、内容或操作结果，就判定为"合格"
-- 只要能看到相关的界面元素、功能展示或操作痕迹，无需完美匹配
-- 重点关注学员是否在正确的方向上进行了尝试和实践
+**批改标准** (友好且宽松):
+- 如果图片显示了与作业要求相关的界面、内容或操作结果，判定为"合格"
+- 重点关注学员是否在正确方向上进行了尝试和实践
+- 给予积极鼓励，认可学员的努力
 
-**回复要求**:
-- 符合要求的话就说"合格"，给予鼓励的话语
-- 只有明显不相关或完全错误的内容才说"不合格"
-- 回复要友好鼓励，体现对学员努力的认可
+**回复格式**:
+- 符合要求请明确说"合格"并给予鼓励
+- 不符合要求请说"不合格"并提供具体改进建议
+- 语言要友好、具体、有建设性
 
 请现在批改学员的作业图片。`;
 
   // 构建Gemini API的请求格式
-  const parts: any[] = [
-    { text: prompt }
-  ];
+  const parts: any[] = [{ text: prompt }];
 
-  // 添加图片内容 - 需要先转换为base64
+  // 处理图片 - 转换为base64格式
+  let processedImageCount = 0;
   for (const imageUrl of attachmentUrls) {
     try {
-      // 获取图片数据并转换为base64
-      const imageResponse = await fetch(imageUrl);
+      console.log(`🔄 处理图片: ${imageUrl}`);
+      
+      // 获取图片数据
+      const imageResponse = await fetch(imageUrl, {
+        signal: AbortSignal.timeout(10000) // 单个图片10秒超时
+      });
+      
       if (!imageResponse.ok) {
-        console.warn(`⚠️ 无法获取图片: ${imageUrl}`);
+        console.warn(`⚠️ 图片获取失败 (${imageResponse.status}): ${imageUrl}`);
         continue;
       }
       
@@ -356,28 +328,31 @@ async function callGeminiAPI(
           data: base64Data
         }
       });
+      
+      processedImageCount++;
+      console.log(`✅ 图片处理成功 (${processedImageCount}/${attachmentUrls.length})`);
+      
     } catch (error) {
-      console.warn(`⚠️ 处理图片失败: ${imageUrl}`, error);
+      console.warn(`⚠️ 图片处理失败: ${imageUrl}`, error);
     }
   }
 
-  const contents = [
-    {
-      role: "user",
-      parts: parts
-    }
-  ];
+  if (processedImageCount === 0) {
+    throw new Error('所有图片处理失败，无法进行批改');
+  }
 
   const requestBody = {
-    contents: contents,
+    contents: [{
+      role: "user", 
+      parts: parts
+    }],
     generationConfig: {
       maxOutputTokens: 1000,
       temperature: 0.1
     }
   };
 
-  console.log('📤 发送请求到Gemini API...');
-  console.log('🖼️ 图片数量:', attachmentUrls.length);
+  console.log(`📊 发送批改请求: ${processedImageCount}张图片`);
 
   try {
     const response = await fetch(`${apiUrl}?key=${apiKey}`, {
@@ -386,27 +361,28 @@ async function callGeminiAPI(
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(requestBody),
-      signal: AbortSignal.timeout(60000) // Gemini处理图片可能需要更长时间
+      signal: AbortSignal.timeout(60000)
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Gemini API调用失败:', response.status, errorText);
-      throw new Error(`Gemini API调用失败: ${response.status} ${errorText}`);
+      console.error('❌ Gemini API请求失败:', response.status, errorText);
+      throw new Error(`Gemini API调用失败: ${response.status} - ${errorText}`);
     }
 
     const result = await response.json();
-    console.log('✅ Gemini API调用成功');
+    console.log('✅ Gemini API响应成功');
 
-    if (!result.candidates || !result.candidates[0] || !result.candidates[0].content) {
+    // 验证响应格式
+    if (!result.candidates?.[0]?.content?.parts?.[0]?.text) {
       console.error('❌ Gemini API返回格式异常:', result);
-      throw new Error('Gemini API返回格式异常');
+      throw new Error('Gemini API返回数据格式异常');
     }
 
     const aiResponse = result.candidates[0].content.parts[0].text;
-    console.log('🤖 Gemini AI批改回复:', aiResponse);
+    console.log('🤖 Gemini批改结果:', aiResponse.substring(0, 100) + '...');
 
-    // 解析AI响应，判断是否合格
+    // 智能解析批改结果
     const isQualified = aiResponse.includes('合格') && !aiResponse.includes('不合格');
     
     return {
