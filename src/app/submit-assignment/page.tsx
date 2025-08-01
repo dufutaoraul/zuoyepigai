@@ -197,8 +197,8 @@ export default function SubmitAssignmentPage() {
       try {
         const { data, error } = await supabase
           .from('submissions')
-          .select('status, feedback')
-          .eq('student_id', studentId)
+          .select('毕业合格统计, AI的作业评估')
+          .eq('学号', studentId)
           .eq('assignment_id', assignmentId)
           .order('created_at', { ascending: false })
           .limit(1)
@@ -206,17 +206,17 @@ export default function SubmitAssignmentPage() {
         
         if (error) throw error;
         
-        if (data && data.status !== '批改中') {
+        if (data && (data as any)['毕业合格统计'] !== '待评估') {
           // 批改完成或失败
           setGradingResult({
-            status: data.status,
-            feedback: data.feedback || '批改完成'
+            status: (data as any)['毕业合格统计'],
+            feedback: (data as any)['AI的作业评估'] || '批改完成'
           });
           setShowResult(true);
-          if (data.status === '批改失败') {
-            setMessage(`批改失败：${data.feedback}`);
+          if ((data as any)['毕业合格统计'] === '批改失败') {
+            setMessage(`批改失败：${(data as any)['AI的作业评估']}`);
           } else {
-            setMessage(`批改完成！结果：${data.status}`);
+            setMessage(`批改完成！结果：${(data as any)['毕业合格统计']}`);
           }
           return;
         }
