@@ -190,7 +190,7 @@ export default function SubmitAssignmentPage() {
 
   // 轮询检查批改结果
   const pollGradingResult = async (studentId: string, assignmentId: string) => {
-    const maxAttempts = 30; // 最多轮询30次 (约3分钟)
+    const maxAttempts = 40; // 最多轮艂40次 (约4分钟) - 使用File API后应该更快
     let attempts = 0;
     
     const checkResult = async (): Promise<void> => {
@@ -226,7 +226,7 @@ export default function SubmitAssignmentPage() {
         if (attempts < maxAttempts) {
           setTimeout(() => checkResult(), 6000); // 6秒后再次检查
         } else {
-          setMessage('批改超时，请稍后查看结果');
+          setMessage('批改超时，请稍后查看结果。如果您的作业包含多张图片，处理时间可能更长。');
         }
       } catch (error) {
         console.error('Error polling grading result:', error);
@@ -341,7 +341,7 @@ export default function SubmitAssignmentPage() {
         console.error('Error triggering AI grading:', error);
       }
 
-      setMessage('作业提交成功！正在进行AI批改，大概需要2-3分钟时间，请耐心等待。您可以返回首页继续提交其他作业，或查看已有作业记录。');
+      setMessage('作业提交成功！正在进行AI批改，大概需要1-2分钟时间，请耐心等待。您可以返回首页继续提交其他作业，或查看已有作业记录。');
       
       // 开始轮询检查批改结果
       await pollGradingResult(studentId, assignmentId);

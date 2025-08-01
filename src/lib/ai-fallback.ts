@@ -25,7 +25,7 @@ export async function callAIWithFallback(
       const result = await Promise.race([
         callGeminiAPI(assignmentDescription, attachmentUrls, assignmentTitle),
         new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Gemini API超时')), 30000)
+          setTimeout(() => reject(new Error('Gemini API超时')), 120000) // 2分钟超时 - 使用File API后应该更快
         )
       ]);
       console.log('✅ Gemini API批改成功');
@@ -306,15 +306,15 @@ async function callGeminiAPI(
   // 构建Gemini API的请求格式
   const parts: any[] = [{ text: prompt }];
 
-  // 处理图片 - 转换为base64格式
+  // 处理图片 - 使用Gemini File API上传获取引用（更快速）
   let processedImageCount = 0;
   for (const imageUrl of attachmentUrls) {
     try {
-      console.log(`🔄 处理图片: ${imageUrl}`);
+      console.log(`🔄 上传图片到Gemini File API: ${imageUrl}`);
       
-      // 获取图片数据
+      // 第一步：获取图片数据
       const imageResponse = await fetch(imageUrl, {
-        signal: AbortSignal.timeout(10000) // 单个图片10秒超时
+        signal: AbortSignal.timeout(5000) // 减少到5秒超时
       });
       
       if (!imageResponse.ok) {
@@ -323,18 +323,42 @@ async function callGeminiAPI(
       }
       
       const imageBuffer = await imageResponse.arrayBuffer();
-      const base64Data = Buffer.from(imageBuffer).toString('base64');
       const mimeType = imageResponse.headers.get('content-type') || 'image/jpeg';
       
-      parts.push({
-        inlineData: {
-          mimeType: mimeType,
-          data: base64Data
-        }
+      // 第二步：上传到Gemini File API
+      const formData = new FormData();
+      const blob = new Blob([imageBuffer], { type: mimeType });
+      formData.append('file', blob, `image_${processedImageCount}.jpg`);
+
+      const uploadResponse = await fetch(`https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`, {
+        method: 'POST',
+        body: formData,
+        signal: AbortSignal.timeout(10000) // 上传超时10秒
       });
+
+      if (!uploadResponse.ok) {
+        console.warn(`⚠️ Gemini File API上传失败: ${uploadResponse.status}`);
+        // 如果File API失败，回退到base64方式
+        const base64Data = Buffer.from(imageBuffer).toString('base64');
+        parts.push({
+          inlineData: {
+            mimeType: mimeType,
+            data: base64Data
+          }
+        });
+        console.log(`📎 回退到base64方式处理图片 ${processedImageCount}`);
+      } else {
+        const uploadResult = await uploadResponse.json();
+        parts.push({
+          fileData: {
+            mimeType: mimeType,
+            fileUri: uploadResult.file.uri
+          }
+        });
+        console.log(`⚡ 图片快速上传成功: ${uploadResult.file.uri}`);
+      }
       
       processedImageCount++;
-      console.log(`✅ 图片处理成功 (${processedImageCount}/${attachmentUrls.length})`);
       
     } catch (error) {
       console.warn(`⚠️ 图片处理失败: ${imageUrl}`, error);
@@ -365,7 +389,7 @@ async function callGeminiAPI(
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(requestBody),
-      signal: AbortSignal.timeout(60000)
+      signal: AbortSignal.timeout(90000) // 1.5分钟超时
     });
 
     if (!response.ok) {
