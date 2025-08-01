@@ -297,16 +297,10 @@ export default function SubmitAssignmentPage() {
         .from('submissions')
         .insert({
           student_id: studentId,
-          student_name: studentName || '',
           assignment_id: assignmentId,
-          day_text: selectedAssignment ? getDayTextFromAssignment(selectedAssignment) : '',
-          assignment_title: selectedAssignment?.assignment_title || '',
-          is_mandatory: selectedAssignment?.is_mandatory || false,
-          description: selectedAssignment?.description || '',
           submission_date: new Date().toISOString(),
           attachments_url: attachmentUrls,
-          status: '批改中',
-          graduation_status: '待评估'
+          status: '批改中'
         });
 
       if (insertError) {
