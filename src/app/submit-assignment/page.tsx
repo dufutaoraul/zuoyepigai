@@ -292,15 +292,14 @@ export default function SubmitAssignmentPage() {
 
       console.log('文件上传完成:', { attachmentUrls });
 
-      // 提交作业记录
+      // 提交作业记录 - 只插入确实存在的字段
       const { error: insertError } = await supabase
         .from('submissions')
         .insert({
           student_id: studentId,
           assignment_id: assignmentId,
           submission_date: new Date().toISOString(),
-          attachments_url: attachmentUrls,
-          status: '批改中'
+          attachments_url: attachmentUrls
         });
 
       if (insertError) {
