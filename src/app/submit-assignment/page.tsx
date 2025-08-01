@@ -292,15 +292,18 @@ export default function SubmitAssignmentPage() {
 
       console.log('文件上传完成:', { attachmentUrls });
 
-      // 提交作业记录 - 只插入确实存在的字段
+      // 提交作业记录 - 最基础的字段测试
+      const submissionData = {
+        student_id: studentId,
+        assignment_id: assignmentId,
+        attachments_url: attachmentUrls
+      };
+      
+      console.log('准备插入数据库:', submissionData);
+      
       const { error: insertError } = await supabase
         .from('submissions')
-        .insert({
-          student_id: studentId,
-          assignment_id: assignmentId,
-          submission_date: new Date().toISOString(),
-          attachments_url: attachmentUrls
-        });
+        .insert(submissionData);
 
       if (insertError) {
         console.error('Database insert error:', insertError);
