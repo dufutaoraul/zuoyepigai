@@ -34,16 +34,15 @@ export async function POST(request: NextRequest) {
     // 2. 调用AI进行批改（带后备方案）
     const gradingResult = await callAIWithFallback(assignmentData.description, attachmentUrls, assignmentData.assignment_title);
     
-    // 3. 更新数据库
+    // 3. 更新数据库 - 使用正确的中文字段名
     console.log('开始更新数据库，批改结果:', gradingResult);
     const { error: updateError } = await supabase
       .from('submissions')
       .update({
-        status: gradingResult.status,
-        feedback: gradingResult.feedback,
-        updated_at: new Date().toISOString()
+        '毕业合格统计': gradingResult.status,
+        'AI的作业评估': gradingResult.feedback
       })
-      .eq('student_id', studentId)
+      .eq('学号', studentId)
       .eq('assignment_id', assignmentId)
       .order('created_at', { ascending: false })
       .limit(1);
@@ -69,11 +68,10 @@ export async function POST(request: NextRequest) {
         await supabase
           .from('submissions')
           .update({
-            status: '批改失败',
-            feedback: `批改过程出错：${error instanceof Error ? error.message : '未知错误'}`,
-            updated_at: new Date().toISOString()
+            '毕业合格统计': '批改失败',
+            'AI的作业评估': `批改过程出错：${error instanceof Error ? error.message : '未知错误'}`
           })
-          .eq('student_id', requestData.studentId)
+          .eq('学号', requestData.studentId)
           .eq('assignment_id', requestData.assignmentId)
           .order('created_at', { ascending: false })
           .limit(1);
