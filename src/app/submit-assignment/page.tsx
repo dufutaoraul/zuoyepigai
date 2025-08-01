@@ -255,17 +255,35 @@ export default function SubmitAssignmentPage() {
       
       // 上传文件到Google Cloud Storage
       const formData = new FormData();
-      files.forEach(file => {
+      console.log('准备上传的文件:', files.map(f => ({
+        name: f.name,
+        size: f.size,
+        type: f.type
+      })));
+      
+      files.forEach((file, index) => {
+        console.log(`添加文件到FormData [${index}]:`, file.name);
         formData.append('files', file);
       });
+
+      console.log('FormData构建完成，开始上传...');
 
       const uploadResponse = await fetch('/api/upload-files', {
         method: 'POST',
         body: formData
       });
 
+      console.log('上传响应状态:', uploadResponse.status, uploadResponse.statusText);
+
       if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json();
+        let errorData;
+        try {
+          errorData = await uploadResponse.json();
+          console.log('上传错误详情:', errorData);
+        } catch (parseError) {
+          console.log('无法解析错误响应，原始响应:', await uploadResponse.text());
+          throw new Error(`文件上传失败: HTTP ${uploadResponse.status}`);
+        }
         throw new Error(`文件上传失败: ${errorData.error || '未知错误'}`);
       }
 
