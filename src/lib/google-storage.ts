@@ -70,12 +70,24 @@ class GoogleCloudStorage {
       console.log(`存储桶: ${this.bucketName}, 文件: ${fileName}, 大小: ${fileBuffer.length} bytes`);
 
       // 上传文件
-      await file.save(fileBuffer, {
-        metadata: {
-          contentType,
-        },
-        public: true, // 设置为公共可读
-      });
+      try {
+        console.log('开始调用file.save()...');
+        await file.save(fileBuffer, {
+          metadata: {
+            contentType,
+          },
+        });
+        console.log('file.save()调用成功');
+        
+        // 设置文件为公共可读
+        console.log('设置文件为公共可读...');
+        await file.makePublic();
+        console.log('文件设置为公共可读成功');
+        
+      } catch (saveError) {
+        console.error('file.save()或makePublic()失败:', saveError);
+        throw saveError;
+      }
 
       console.log(`文件上传成功: ${fileName}`);
 
@@ -88,26 +100,34 @@ class GoogleCloudStorage {
       console.error('上传文件到Google Cloud Storage时出错:', {
         fileName,
         bucketName: this.bucketName,
+        errorType: typeof error,
+        errorConstructor: error ? error.constructor.name : 'null',
         error: error,
         errorMessage: error instanceof Error ? error.message : 'Unknown error',
         errorCode: (error as any)?.code,
-        errorDetails: (error as any)?.details
+        errorDetails: (error as any)?.details,
+        errorStack: error instanceof Error ? error.stack : undefined
       });
       
       // 提供更详细的错误信息
       if (error instanceof Error) {
+        console.error('Error stack:', error.stack);
         if (error.message.includes('No such bucket')) {
           throw new Error(`Storage bucket '${this.bucketName}' does not exist`);
         }
-        if (error.message.includes('Access denied')) {
+        if (error.message.includes('Access denied') || error.message.includes('403')) {
           throw new Error('Access denied - check service account permissions');
         }
-        if (error.message.includes('Invalid credentials')) {
+        if (error.message.includes('Invalid credentials') || error.message.includes('401')) {
           throw new Error('Invalid service account credentials');
+        }
+        if (error.message.includes('404')) {
+          throw new Error(`Storage bucket '${this.bucketName}' not found`);
         }
         throw new Error(`Upload failed: ${error.message}`);
       } else {
-        throw new Error('Upload failed: Unknown error');
+        console.error('Non-Error object thrown:', error);
+        throw new Error(`Upload failed: ${JSON.stringify(error)}`);
       }
     }
   }
