@@ -36,7 +36,8 @@
       "Bash(pkill:*)",
       "Bash(git remote remove:*)",
       "WebFetch(domain:zuoyepigai.netlify.app)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(cp:*)"
     ],
     "deny": []
   }
