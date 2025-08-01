@@ -34,14 +34,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const formData = await request.formData();
-    const files = formData.getAll('files') as File[];
+    let formData;
+    let files: File[] = [];
     
-    console.log('接收到文件:', files.map(f => ({ name: f.name, size: f.size, type: f.type })));
+    try {
+      formData = await request.formData();
+      files = formData.getAll('files') as File[];
+      
+      console.log('FormData解析成功');
+      console.log('接收到文件数量:', files.length);
+      console.log('文件详情:', files.map(f => ({ 
+        name: f.name, 
+        size: f.size, 
+        type: f.type,
+        isFile: f instanceof File
+      })));
+      
+    } catch (formError) {
+      console.error('FormData解析失败:', formError);
+      return NextResponse.json(
+        { 
+          error: 'FormData解析失败',
+          details: formError instanceof Error ? formError.message : '未知错误'
+        },
+        { status: 400 }
+      );
+    }
     
     if (!files || files.length === 0) {
       return NextResponse.json(
-        { error: '没有找到文件' },
+        { 
+          error: '没有找到文件',
+          formDataKeys: Array.from(formData.keys()),
+          formDataSize: formData.get('files') ? 'files key exists' : 'files key missing'
+        },
         { status: 400 }
       );
     }
@@ -62,19 +88,25 @@ export async function POST(request: NextRequest) {
       console.log(`文件名处理: ${originalName} -> ${fileName}`);
 
       // 将File转换为Buffer
-      const arrayBuffer = await file.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      
-      console.log(`文件转换完成，大小: ${buffer.length} bytes`);
+      let buffer: Buffer;
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        buffer = Buffer.from(arrayBuffer);
+        console.log(`文件转换完成，大小: ${buffer.length} bytes`);
+      } catch (bufferError) {
+        console.error(`文件转换失败 ${fileName}:`, bufferError);
+        throw new Error(`文件转换失败: ${bufferError instanceof Error ? bufferError.message : '未知错误'}`);
+      }
 
       // 上传到Google Cloud Storage
       try {
+        console.log(`开始上传文件到GCS: ${fileName}`);
         const publicUrl = await googleStorage.uploadFile(fileName, buffer, file.type);
         uploadedUrls.push(publicUrl);
         console.log(`文件上传成功: ${publicUrl}`);
       } catch (uploadError) {
         console.error(`文件上传失败 ${fileName}:`, uploadError);
-        throw uploadError;
+        throw new Error(`文件上传失败: ${uploadError instanceof Error ? uploadError.message : '未知错误'}`);
       }
     }
 
