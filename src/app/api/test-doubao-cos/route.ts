@@ -70,8 +70,9 @@ export async function POST() {
       const response = await fetch(doubaoApiUrl, {
         method: 'POST',
         headers: {
-          'Authorization': doubaoApiKey,
-          'Content-Type': 'application/json'
+          'Authorization': doubaoApiKey, // doubaoApiKey已经包含"Bearer "前缀
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (compatible; NetlifyBot/1.0)'
         },
         body: JSON.stringify(requestBody),
         signal: AbortSignal.timeout(30000) // 30秒超时
@@ -99,8 +100,36 @@ export async function POST() {
         }, { status: 500 });
       }
       
-      const result = await response.json();
-      console.log('豆包API调用成功');
+      let result;
+      let responseText = '';
+      
+      try {
+        responseText = await response.text();
+        console.log('豆包API原始响应:', responseText);
+        
+        if (!responseText.trim()) {
+          throw new Error('Empty response from API');
+        }
+        
+        result = JSON.parse(responseText);
+        console.log('豆包API调用成功，解析后的结果:', result);
+      } catch (jsonError) {
+        console.error('JSON解析失败:', jsonError);
+        console.error('原始响应内容:', responseText);
+        
+        return NextResponse.json({
+          success: false,
+          error: 'JSON解析失败',
+          details: {
+            status: response.status,
+            statusText: response.statusText,
+            responseTime,
+            rawResponse: responseText,
+            jsonError: jsonError instanceof Error ? jsonError.message : '未知JSON错误',
+            imageUrl
+          }
+        }, { status: 500 });
+      }
       
       if (!result.choices || !result.choices[0] || !result.choices[0].message) {
         return NextResponse.json({
