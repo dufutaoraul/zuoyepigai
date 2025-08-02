@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { googleStorage } from '@/lib/google-storage';
+import { tencentStorage } from '@/lib/tencent-storage';
 
 export async function GET() {
   try {
@@ -13,7 +13,7 @@ export async function GET() {
     console.log('开始测试上传:', testFileName);
     
     // 尝试上传测试文件
-    const publicUrl = await googleStorage.uploadFile(testFileName, testBuffer, 'text/plain');
+    const publicUrl = await tencentStorage.uploadFile(testFileName, testBuffer, 'text/plain');
     
     console.log('测试上传成功:', publicUrl);
     
@@ -33,7 +33,7 @@ export async function GET() {
       stack: error instanceof Error ? error.stack : undefined,
     };
     
-    // 如果是Google Cloud错误，提取更多信息
+    // 如果是腾讯云COS错误，提取更多信息
     if (error && typeof error === 'object' && 'code' in error) {
       errorDetails.code = (error as any).code;
       errorDetails.details = (error as any).details;
@@ -44,9 +44,10 @@ export async function GET() {
       error: '测试上传失败',
       details: errorDetails,
       environment: {
-        projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
-        bucketName: process.env.GOOGLE_CLOUD_STORAGE_BUCKET,
-        hasServiceKey: !!process.env.GOOGLE_CLOUD_SERVICE_ACCOUNT_KEY
+        secretId: process.env.TENCENT_SECRET_ID ? process.env.TENCENT_SECRET_ID.substring(0, 8) + '***' : 'undefined',
+        bucketName: process.env.TENCENT_COS_BUCKET,
+        region: process.env.TENCENT_COS_REGION,
+        hasSecretKey: !!process.env.TENCENT_SECRET_KEY
       }
     }, { status: 500 });
   }

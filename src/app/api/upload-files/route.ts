@@ -1,29 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { googleStorage } from '@/lib/google-storage';
+import { tencentStorage } from '@/lib/tencent-storage';
 
 export async function POST(request: NextRequest) {
   console.log('=== 开始文件上传 ===');
   
   try {
     // 检查环境变量
-    const projectId = process.env.GOOGLE_CLOUD_PROJECT_ID;
-    const bucketName = process.env.GOOGLE_CLOUD_STORAGE_BUCKET;
-    const serviceAccountKey = process.env.GOOGLE_CLOUD_SERVICE_ACCOUNT_KEY;
+    const secretId = process.env.TENCENT_SECRET_ID;
+    const secretKey = process.env.TENCENT_SECRET_KEY;
+    const bucketName = process.env.TENCENT_COS_BUCKET;
+    const region = process.env.TENCENT_COS_REGION;
     
     console.log('环境变量检查:', {
-      hasProjectId: !!projectId,
-      projectId,
+      hasSecretId: !!secretId,
+      secretId: secretId ? secretId.substring(0, 8) + '***' : 'undefined',
+      hasSecretKey: !!secretKey,
       hasBucketName: !!bucketName,
       bucketName,
-      hasServiceAccountKey: !!serviceAccountKey,
-      serviceAccountKeyLength: serviceAccountKey?.length || 0
+      hasRegion: !!region,
+      region
     });
 
-    if (!projectId || !bucketName || !serviceAccountKey) {
+    if (!secretId || !secretKey || !bucketName || !region) {
       const missingVars = [];
-      if (!projectId) missingVars.push('GOOGLE_CLOUD_PROJECT_ID');
-      if (!bucketName) missingVars.push('GOOGLE_CLOUD_STORAGE_BUCKET');
-      if (!serviceAccountKey) missingVars.push('GOOGLE_CLOUD_SERVICE_ACCOUNT_KEY');
+      if (!secretId) missingVars.push('TENCENT_SECRET_ID');
+      if (!secretKey) missingVars.push('TENCENT_SECRET_KEY');
+      if (!bucketName) missingVars.push('TENCENT_COS_BUCKET');
+      if (!region) missingVars.push('TENCENT_COS_REGION');
       
       return NextResponse.json(
         { 
@@ -100,10 +103,10 @@ export async function POST(request: NextRequest) {
         throw new Error(`文件转换失败: ${bufferError instanceof Error ? bufferError.message : '未知错误'}`);
       }
 
-      // 上传到Google Cloud Storage
+      // 上传到腾讯云COS
       try {
-        console.log(`开始上传文件到GCS: ${fileName}`);
-        const publicUrl = await googleStorage.uploadFile(fileName, buffer, file.type);
+        console.log(`开始上传文件到腾讯云COS: ${fileName}`);
+        const publicUrl = await tencentStorage.uploadFile(fileName, buffer, file.type);
         uploadedUrls.push(publicUrl);
         console.log(`文件上传成功: ${publicUrl}`);
       } catch (uploadError) {
