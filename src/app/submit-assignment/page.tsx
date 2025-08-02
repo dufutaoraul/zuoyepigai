@@ -190,24 +190,32 @@ export default function SubmitAssignmentPage() {
 
   // 轮询检查批改结果
   const pollGradingResult = async (studentId: string, assignmentId: string) => {
-    const maxAttempts = 40; // 最多轮艂40次 (约4分钟) - 使用File API后应该更快
+    const maxAttempts = 60; // 最多轮询60次 (约5分钟)
     let attempts = 0;
     
     const checkResult = async (): Promise<void> => {
       try {
+        console.log(`轮询检查批改结果 - 第${attempts + 1}次，学号: ${studentId}, 作业ID: ${assignmentId}`);
+        
         const { data, error } = await supabase
           .from('submissions')
-          .select('毕业合格统计, AI的作业评估')
+          .select('毕业合格统计, AI的作业评估, created_at')
           .eq('学号', studentId)
           .eq('assignment_id', assignmentId)
           .order('created_at', { ascending: false })
           .limit(1)
           .single();
         
-        if (error) throw error;
+        if (error) {
+          console.error('查询批改结果出错:', error);
+          throw error;
+        }
+        
+        console.log('查询到的数据:', data);
         
         if (data && (data as any)['毕业合格统计'] !== '待评估') {
           // 批改完成或失败
+          console.log('批改完成，状态:', (data as any)['毕业合格统计']);
           setGradingResult({
             status: (data as any)['毕业合格统计'],
             feedback: (data as any)['AI的作业评估'] || '批改完成'
@@ -223,19 +231,27 @@ export default function SubmitAssignmentPage() {
         
         // 如果还在批改中，继续轮询
         attempts++;
+        console.log(`批改还在进行中，继续轮询 (${attempts}/${maxAttempts})`);
         if (attempts < maxAttempts) {
-          setTimeout(() => checkResult(), 6000); // 6秒后再次检查
+          setTimeout(() => checkResult(), 3000); // 3秒后再次检查 (更频繁)
         } else {
           setMessage('批改超时，请稍后查看结果。如果您的作业包含多张图片，处理时间可能更长。');
         }
       } catch (error) {
         console.error('Error polling grading result:', error);
-        setMessage('检查批改结果时出错');
+        attempts++;
+        if (attempts < maxAttempts) {
+          // 出错时也继续重试
+          setTimeout(() => checkResult(), 3000);
+        } else {
+          setMessage('检查批改结果时出错，请刷新页面重试');
+        }
       }
     };
     
-    // 开始轮询
-    setTimeout(() => checkResult(), 6000); // 6秒后开始第一次检查
+    // 立即开始第一次检查，然后每3秒检查一次
+    console.log('开始轮询批改结果...');
+    setTimeout(() => checkResult(), 2000); // 2秒后开始第一次检查
   };
 
   // 提交作业
