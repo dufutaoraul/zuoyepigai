@@ -74,8 +74,8 @@ class CloudflareR2Storage {
 
       console.log(`文件上传成功: ${fileName}`, result);
 
-      // 构建公共访问URL
-      const publicUrl = `https://pub-${this.accountId.substring(0, 32)}.r2.dev/${fileName}`;
+      // 构建公共访问URL - 使用正确的公共域名标识符
+      const publicUrl = `https://pub-672c16ae6aa44b2cad664361d24d5626.r2.dev/${fileName}`;
       console.log(`公共URL: ${publicUrl}`);
       
       return publicUrl;
@@ -167,7 +167,7 @@ class CloudflareR2Storage {
    * @returns 公共访问URL
    */
   getPublicUrl(fileName: string): string {
-    return `https://pub-${this.accountId.substring(0, 32)}.r2.dev/${fileName}`;
+    return `https://pub-672c16ae6aa44b2cad664361d24d5626.r2.dev/${fileName}`;
   }
 }
 
