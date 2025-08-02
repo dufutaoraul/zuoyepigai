@@ -26,6 +26,11 @@ export interface Submission {
   feedback?: string;
   graduation_status?: string;
   
+  // 中文字段名（实际数据库字段）
+  '学号'?: string;
+  '毕业合格统计'?: '批改中' | '合格' | '不合格' | '批改失败';
+  'AI的作业评估'?: string;
+  
   // 系统字段
   submission_id: string;
   assignment_id: string;
