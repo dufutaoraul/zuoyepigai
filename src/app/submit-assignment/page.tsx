@@ -253,7 +253,7 @@ export default function SubmitAssignmentPage() {
     try {
       console.log('开始提交作业:', { studentId, assignmentId, fileCount: files.length });
       
-      // 上传文件到Google Cloud Storage
+      // 上传文件到Cloudflare R2
       const formData = new FormData();
       console.log('准备上传的文件:', files.map(f => ({
         name: f.name,

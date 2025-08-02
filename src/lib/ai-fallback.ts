@@ -310,11 +310,10 @@ async function callGeminiAPI(
   let processedImageCount = 0;
   for (const imageUrl of attachmentUrls) {
     try {
-      console.log(`🔄 通过代理获取图片: ${imageUrl}`);
+      console.log(`🔄 直接获取图片: ${imageUrl}`);
       
-      // 第一步：通过代理获取图片数据
-      const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
-      const imageResponse = await fetch(proxyUrl, {
+      // 第一步：直接获取图片数据（Cloudflare R2全球访问无问题）
+      const imageResponse = await fetch(imageUrl, {
         signal: AbortSignal.timeout(10000) // 10秒超时
       });
       

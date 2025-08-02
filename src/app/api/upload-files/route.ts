@@ -1,32 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { tencentStorage } from '@/lib/tencent-storage';
+import { cloudflareR2Storage } from '@/lib/cloudflare-r2';
 
 export async function POST(request: NextRequest) {
   console.log('=== 开始文件上传 ===');
   
   try {
     // 检查环境变量
-    const secretId = process.env.TENCENT_SECRET_ID;
-    const secretKey = process.env.TENCENT_SECRET_KEY;
-    const bucketName = process.env.TENCENT_COS_BUCKET;
-    const region = process.env.TENCENT_COS_REGION;
+    const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
+    const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
+    const accountId = process.env.CLOUDFLARE_R2_ACCOUNT_ID;
+    const endpoint = process.env.CLOUDFLARE_R2_ENDPOINT;
     
     console.log('环境变量检查:', {
-      hasSecretId: !!secretId,
-      secretId: secretId ? secretId.substring(0, 8) + '***' : 'undefined',
-      hasSecretKey: !!secretKey,
+      hasAccessKeyId: !!accessKeyId,
+      accessKeyId: accessKeyId ? accessKeyId.substring(0, 8) + '***' : 'undefined',
+      hasSecretKey: !!secretAccessKey,
       hasBucketName: !!bucketName,
       bucketName,
-      hasRegion: !!region,
-      region
+      hasAccountId: !!accountId,
+      accountId: accountId ? accountId.substring(0, 8) + '***' : 'undefined',
+      hasEndpoint: !!endpoint,
+      endpoint
     });
 
-    if (!secretId || !secretKey || !bucketName || !region) {
+    if (!accessKeyId || !secretAccessKey || !bucketName || !accountId || !endpoint) {
       const missingVars = [];
-      if (!secretId) missingVars.push('TENCENT_SECRET_ID');
-      if (!secretKey) missingVars.push('TENCENT_SECRET_KEY');
-      if (!bucketName) missingVars.push('TENCENT_COS_BUCKET');
-      if (!region) missingVars.push('TENCENT_COS_REGION');
+      if (!accessKeyId) missingVars.push('CLOUDFLARE_R2_ACCESS_KEY_ID');
+      if (!secretAccessKey) missingVars.push('CLOUDFLARE_R2_SECRET_ACCESS_KEY');
+      if (!bucketName) missingVars.push('CLOUDFLARE_R2_BUCKET_NAME');
+      if (!accountId) missingVars.push('CLOUDFLARE_R2_ACCOUNT_ID');
+      if (!endpoint) missingVars.push('CLOUDFLARE_R2_ENDPOINT');
       
       return NextResponse.json(
         { 
@@ -103,10 +107,10 @@ export async function POST(request: NextRequest) {
         throw new Error(`文件转换失败: ${bufferError instanceof Error ? bufferError.message : '未知错误'}`);
       }
 
-      // 上传到腾讯云COS
+      // 上传到Cloudflare R2
       try {
-        console.log(`开始上传文件到腾讯云COS: ${fileName}`);
-        const publicUrl = await tencentStorage.uploadFile(fileName, buffer, file.type);
+        console.log(`开始上传文件到Cloudflare R2: ${fileName}`);
+        const publicUrl = await cloudflareR2Storage.uploadFile(fileName, buffer, file.type);
         uploadedUrls.push(publicUrl);
         console.log(`文件上传成功: ${publicUrl}`);
       } catch (uploadError) {
