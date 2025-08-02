@@ -211,18 +211,26 @@ function MyAssignmentsContent() {
     
     setDeletingSubmission(submissionId);
     try {
-      const { error } = await supabase
+      console.log('正在删除submission_id:', submissionId);
+      
+      const { error, count } = await supabase
         .from('submissions')
         .delete()
         .eq('submission_id', submissionId);
         
-      if (error) throw error;
+      if (error) {
+        console.error('删除错误:', error);
+        throw error;
+      }
       
+      console.log('删除成功，影响行数:', count);
       setMessage('作业删除成功');
-      fetchSubmissions();
+      
+      // 立即刷新列表
+      await fetchSubmissions();
     } catch (error) {
       console.error('Error deleting submission:', error);
-      setMessage('删除失败，请重试');
+      setMessage(`删除失败：${error instanceof Error ? error.message : '未知错误'}`);
     } finally {
       setDeletingSubmission(null);
     }
