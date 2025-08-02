@@ -65,7 +65,7 @@ function MyAssignmentsContent() {
       }
 
       // 获取所有相关的作业信息
-      const assignmentIds = submissionsData.map(s => s.assignment_id);
+      const assignmentIds = submissionsData.map((s: any) => s.assignment_id);
       const { data: assignmentsData, error: assignmentsError } = await supabase
         .from('assignments')
         .select('*')
@@ -76,13 +76,13 @@ function MyAssignmentsContent() {
       // 创建作业信息映射
       const assignmentMap = new Map();
       if (assignmentsData) {
-        assignmentsData.forEach(assignment => {
+        assignmentsData.forEach((assignment: any) => {
           assignmentMap.set(assignment.assignment_id, assignment);
         });
       }
 
       // 合并数据
-      const data = submissionsData.map(submission => ({
+      const data = submissionsData.map((submission: any) => ({
         ...submission,
         assignment: assignmentMap.get(submission.assignment_id)
       }));

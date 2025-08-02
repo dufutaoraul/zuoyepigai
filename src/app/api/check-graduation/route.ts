@@ -98,7 +98,7 @@ async function getGraduationProgressFromDB(studentId: string) {
   console.log(`找到 ${submissions.length} 个合格的作业提交记录`);
   
   // 获取所有相关的作业信息
-  const assignmentIds = submissions.map(s => s.assignment_id);
+  const assignmentIds = submissions.map((s: any) => s.assignment_id);
   const { data: assignments, error: assignmentError } = await sb
     .from('assignments')
     .select('*')
@@ -112,7 +112,7 @@ async function getGraduationProgressFromDB(studentId: string) {
   // 创建作业信息映射
   const assignmentMap = new Map();
   if (assignments) {
-    assignments.forEach(assignment => {
+    assignments.forEach((assignment: any) => {
       assignmentMap.set(assignment.assignment_id, assignment);
     });
   }
@@ -128,7 +128,7 @@ async function getGraduationProgressFromDB(studentId: string) {
   const missingMandatoryTasks = [...MANDATORY_TASKS];
 
   for (const submission of submissions) {
-    const assignment = assignmentMap.get(submission.assignment_id);
+    const assignment = assignmentMap.get((submission as any).assignment_id);
     if (!assignment) continue;
 
     const taskName = assignment.assignment_title;
