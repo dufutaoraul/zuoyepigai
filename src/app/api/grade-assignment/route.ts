@@ -34,30 +34,27 @@ export async function POST(request: NextRequest) {
     // 2. 调用AI进行批改（带后备方案）
     const gradingResult = await callAIWithFallback(assignmentData.description, attachmentUrls, assignmentData.assignment_title);
     
-    // 3. 更新数据库 - 使用组合条件更新最新记录
+    // 3. 更新数据库 - 使用xmin字段定位最新记录
     console.log('开始更新数据库，批改结果:', gradingResult);
     
-    // 获取当前时间用于查找最新记录
-    const now = new Date().toISOString();
-    
-    // 先查询确认记录存在
-    const { data: checkData, error: checkError } = await supabase
+    // 先查询获取最新记录的xmin
+    const { data: latestRecord, error: queryError } = await supabase
       .from('submissions')
-      .select('created_at')
+      .select('xmin')
       .eq('学号', studentId)
       .eq('assignment_id', assignmentId)
-      .order('created_at', { ascending: false })
+      .order('xmin', { ascending: false })
       .limit(1)
       .single();
 
-    if (checkError || !checkData) {
-      console.error('查询submission记录失败:', checkError);
+    if (queryError || !latestRecord) {
+      console.error('查询最新submission记录失败:', queryError);
       return NextResponse.json({ error: '找不到对应的作业记录' }, { status: 500 });
     }
 
-    console.log('找到要更新的记录，创建时间:', checkData.created_at);
+    console.log('找到要更新的记录，xmin:', latestRecord.xmin);
 
-    // 使用组合条件进行更新 - 更新指定学号和作业ID的最新记录
+    // 使用xmin精确更新最新记录
     const { error: updateError, count } = await supabase
       .from('submissions')
       .update({
@@ -66,14 +63,14 @@ export async function POST(request: NextRequest) {
       })
       .eq('学号', studentId)
       .eq('assignment_id', assignmentId)
-      .eq('created_at', checkData.created_at);
+      .eq('xmin', latestRecord.xmin);
 
     if (updateError) {
       console.error('数据库更新失败:', updateError);
       return NextResponse.json({ error: '更新批改结果失败' }, { status: 500 });
     }
 
-    console.log('数据库更新成功，更新记录数:', count);
+    console.log('数据库更新成功，更新记录数:', count, 'xmin:', latestRecord.xmin);
 
     return NextResponse.json({ 
       success: true, 
@@ -86,18 +83,18 @@ export async function POST(request: NextRequest) {
     // 如果出错，将状态更新为批改失败（使用已解析的数据）
     if (requestData?.studentId && requestData?.assignmentId) {
       try {
-        // 先查询记录的创建时间
+        // 先查询最新记录的xmin
         const { data: failureSubmissionData } = await supabase
           .from('submissions')
-          .select('created_at')
+          .select('xmin')
           .eq('学号', requestData.studentId)
           .eq('assignment_id', requestData.assignmentId)
-          .order('created_at', { ascending: false })
+          .order('xmin', { ascending: false })
           .limit(1)
           .single();
 
         if (failureSubmissionData) {
-          // 使用组合条件进行更新
+          // 使用xmin进行精确更新
           await supabase
             .from('submissions')
             .update({
@@ -106,7 +103,7 @@ export async function POST(request: NextRequest) {
             })
             .eq('学号', requestData.studentId)
             .eq('assignment_id', requestData.assignmentId)
-            .eq('created_at', failureSubmissionData.created_at);
+            .eq('xmin', failureSubmissionData.xmin);
         }
       } catch (dbError) {
         console.error('更新失败状态时出错:', dbError);
