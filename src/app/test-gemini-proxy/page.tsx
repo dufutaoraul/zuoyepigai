@@ -117,9 +117,9 @@ export default function TestGeminiProxy() {
                         </span>
                       </div>
                       <div>
-                        <strong>图片代理：</strong>
-                        <span className={result.results.proxySuccess ? 'text-green-600' : 'text-red-600'}>
-                          {result.results.proxySuccess ? ' 成功' : ' 失败'}
+                        <strong>图片获取：</strong>
+                        <span className={result.results.directFetchSuccess ? 'text-green-600' : 'text-red-600'}>
+                          {result.results.directFetchSuccess ? ' 成功' : ' 失败'}
                         </span>
                       </div>
                       <div>
