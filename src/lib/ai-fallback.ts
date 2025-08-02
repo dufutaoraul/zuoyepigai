@@ -306,15 +306,16 @@ async function callGeminiAPI(
   // 构建Gemini API的请求格式
   const parts: any[] = [{ text: prompt }];
 
-  // 处理图片 - 使用Gemini File API上传获取引用（更快速）
+  // 处理图片 - 通过代理访问腾讯云COS图片，然后使用Gemini File API
   let processedImageCount = 0;
   for (const imageUrl of attachmentUrls) {
     try {
-      console.log(`🔄 上传图片到Gemini File API: ${imageUrl}`);
+      console.log(`🔄 通过代理获取图片: ${imageUrl}`);
       
-      // 第一步：获取图片数据
-      const imageResponse = await fetch(imageUrl, {
-        signal: AbortSignal.timeout(5000) // 减少到5秒超时
+      // 第一步：通过代理获取图片数据
+      const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
+      const imageResponse = await fetch(proxyUrl, {
+        signal: AbortSignal.timeout(10000) // 10秒超时
       });
       
       if (!imageResponse.ok) {
