@@ -189,11 +189,12 @@ export default function SubmitAssignmentPage() {
   };
 
   // 轮询检查批改结果
-  const pollGradingResult = async (studentId: string, assignmentId: string) => {
-    const maxAttempts = 60; // 最多轮询60次 (约5分钟)
-    let attempts = 0;
-    
-    const checkResult = async (): Promise<void> => {
+  const pollGradingResult = async (studentId: string, assignmentId: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const maxAttempts = 60; // 最多轮询60次 (约5分钟)
+      let attempts = 0;
+      
+      const checkResult = async (): Promise<void> => {
       try {
         console.log(`轮询检查批改结果 - 第${attempts + 1}次，学号: ${studentId}, 作业ID: ${assignmentId}`);
         
@@ -226,6 +227,7 @@ export default function SubmitAssignmentPage() {
           } else {
             setMessage(`批改完成！结果：${(data as any)['毕业合格统计']}`);
           }
+          resolve(); // 完成Promise
           return;
         }
         
@@ -236,6 +238,7 @@ export default function SubmitAssignmentPage() {
           setTimeout(() => checkResult(), 3000); // 3秒后再次检查 (更频繁)
         } else {
           setMessage('批改超时，请稍后查看结果。如果您的作业包含多张图片，处理时间可能更长。');
+          resolve(); // 超时也要完成Promise
         }
       } catch (error) {
         console.error('Error polling grading result:', error);
@@ -245,13 +248,15 @@ export default function SubmitAssignmentPage() {
           setTimeout(() => checkResult(), 3000);
         } else {
           setMessage('检查批改结果时出错，请刷新页面重试');
+          reject(error); // 最终失败时reject
         }
       }
-    };
-    
-    // 立即开始第一次检查，然后每3秒检查一次
-    console.log('开始轮询批改结果...');
-    setTimeout(() => checkResult(), 2000); // 2秒后开始第一次检查
+      };
+      
+      // 立即开始第一次检查，然后每3秒检查一次
+      console.log('开始轮询批改结果...');
+      setTimeout(() => checkResult(), 2000); // 2秒后开始第一次检查
+    });
   };
 
   // 提交作业
