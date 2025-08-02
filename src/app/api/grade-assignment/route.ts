@@ -37,20 +37,22 @@ export async function POST(request: NextRequest) {
     // 3. 更新数据库 - 使用xmin字段定位最新记录
     console.log('开始更新数据库，批改结果:', gradingResult);
     
-    // 先查询获取最新记录的xmin
-    const { data: latestRecord, error: queryError } = await supabase
+    // 先查询所有匹配的记录，在代码中找到最新的
+    const { data: allRecords, error: queryError } = await supabase
       .from('submissions')
       .select('xmin')
       .eq('学号', studentId)
-      .eq('assignment_id', assignmentId)
-      .order('xmin', { ascending: false })
-      .limit(1)
-      .single();
+      .eq('assignment_id', assignmentId);
 
-    if (queryError || !latestRecord) {
+    if (queryError || !allRecords || allRecords.length === 0) {
       console.error('查询最新submission记录失败:', queryError);
       return NextResponse.json({ error: '找不到对应的作业记录' }, { status: 500 });
     }
+
+    // 在代码中找到最大的xmin值（最新记录）
+    const latestRecord = allRecords.reduce((latest, current) => {
+      return parseInt(current.xmin) > parseInt(latest.xmin) ? current : latest;
+    });
 
     console.log('找到要更新的记录，xmin:', latestRecord.xmin);
 
@@ -83,17 +85,17 @@ export async function POST(request: NextRequest) {
     // 如果出错，将状态更新为批改失败（使用已解析的数据）
     if (requestData?.studentId && requestData?.assignmentId) {
       try {
-        // 先查询最新记录的xmin
-        const { data: failureSubmissionData } = await supabase
+        // 先查询所有匹配记录，在代码中找到最新的
+        const { data: failureAllRecords } = await supabase
           .from('submissions')
           .select('xmin')
           .eq('学号', requestData.studentId)
-          .eq('assignment_id', requestData.assignmentId)
-          .order('xmin', { ascending: false })
-          .limit(1)
-          .single();
+          .eq('assignment_id', requestData.assignmentId);
 
-        if (failureSubmissionData) {
+        if (failureAllRecords && failureAllRecords.length > 0) {
+          const failureSubmissionData = failureAllRecords.reduce((latest, current) => {
+            return parseInt(current.xmin) > parseInt(latest.xmin) ? current : latest;
+          });
           // 使用xmin进行精确更新
           await supabase
             .from('submissions')
