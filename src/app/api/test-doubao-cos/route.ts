@@ -37,7 +37,7 @@ export async function POST() {
     // 第二步：测试豆包API能否访问这个图片
     const testPrompt = `这是一个图片访问测试。请看图片并回复"图片访问成功"。如果无法访问图片，请说明具体问题。`;
     
-    // 构建豆包API请求
+    // 构建豆包API请求 - 使用正确的格式
     const requestBody = {
       model: doubaoModelId,
       messages: [
@@ -45,14 +45,14 @@ export async function POST() {
           role: "user",
           content: [
             {
-              type: "text",
-              text: testPrompt
+              text: testPrompt,
+              type: "text"
             },
             {
-              type: "image_url",
               image_url: {
                 url: imageUrl
-              }
+              },
+              type: "image_url"
             }
           ]
         }
