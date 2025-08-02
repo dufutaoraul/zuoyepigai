@@ -83,8 +83,8 @@ async function getGraduationProgressFromDB(studentId: string) {
       *,
       assignment:assignments(*)
     `)
-    .eq('student_id', studentId)
-    .eq('status', '合格');
+    .eq('学号', studentId)
+    .eq('毕业合格统计', '合格');
 
   if (error) {
     console.error('查询提交记录失败:', error);

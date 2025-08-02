@@ -55,8 +55,8 @@ function MyAssignmentsContent() {
           *,
           assignment:assignments(*)
         `)
-        .eq('student_id', id)
-        .order('submission_date', { ascending: false });
+        .eq('学号', id)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       
@@ -96,18 +96,22 @@ function MyAssignmentsContent() {
       // 上传新文件（如果有）
       if (newFiles.length > 0) {
         for (const file of newFiles) {
-          const fileName = `${Date.now()}-${file.name}`;
-          const { data, error } = await supabase.storage
-            .from('assignments')
-            .upload(fileName, file);
+          const formData = new FormData();
+          formData.append('files', file);
           
-          if (error) throw error;
+          const uploadResponse = await fetch('/api/upload-files', {
+            method: 'POST',
+            body: formData
+          });
           
-          const { data: { publicUrl } } = supabase.storage
-            .from('assignments')
-            .getPublicUrl(fileName);
+          if (!uploadResponse.ok) {
+            throw new Error('文件上传失败');
+          }
           
-          finalAttachmentUrls.push(publicUrl);
+          const uploadResult = await uploadResponse.json();
+          if (uploadResult.urls && uploadResult.urls.length > 0) {
+            finalAttachmentUrls.push(...uploadResult.urls);
+          }
         }
       }
 
@@ -116,8 +120,8 @@ function MyAssignmentsContent() {
         .from('submissions')
         .update({
           attachments_url: finalAttachmentUrls,
-          status: '批改中',
-          feedback: null,
+          '毕业合格统计': '批改中',
+          'AI的作业评估': null,
           updated_at: new Date().toISOString()
         })
         .eq('submission_id', submissionId);
@@ -284,17 +288,17 @@ function MyAssignmentsContent() {
                     </div>
                     
                     <div className="text-right">
-                      <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(submission.status)}`}>
-                        {submission.status}
+                      <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(submission['毕业合格统计'] || submission.status)}`}>
+                        {submission['毕业合格统计'] || submission.status || '未批改'}
                       </span>
                     </div>
                   </div>
 
                   {/* 批改反馈 */}
-                  {submission.feedback && (
+                  {(submission['AI的作业评估'] || submission.feedback) && (
                     <div className="mb-4 p-3 bg-gray-50 rounded-md">
                       <p className="text-sm font-medium text-gray-700 mb-1">批改反馈:</p>
-                      <p className="text-sm text-gray-600">{submission.feedback}</p>
+                      <p className="text-sm text-gray-600">{submission['AI的作业评估'] || submission.feedback}</p>
                     </div>
                   )}
 
@@ -323,7 +327,7 @@ function MyAssignmentsContent() {
                   {/* 操作按钮 */}
                   <div className="border-t pt-4">
                     {/* 重新提交功能 */}
-                    {(submission.status === '不合格' || submission.status === '批改失败') && editingSubmission === submission.submission_id && (
+                    {((submission['毕业合格统计'] || submission.status) === '不合格' || (submission['毕业合格统计'] || submission.status) === '批改失败') && editingSubmission === submission.submission_id && (
                       <div className="mb-4 space-y-4">
                         {/* 原有文件处理选项 */}
                         <div>
@@ -424,7 +428,7 @@ function MyAssignmentsContent() {
                     {/* 操作按钮行 */}
                     <div className="flex gap-2 flex-wrap">
                       {/* 重新提交按钮 - 仅当状态为不合格或批改失败且未在编辑时显示 */}
-                      {(submission.status === '不合格' || submission.status === '批改失败') && editingSubmission !== submission.submission_id && (
+                      {((submission['毕业合格统计'] || submission.status) === '不合格' || (submission['毕业合格统计'] || submission.status) === '批改失败') && editingSubmission !== submission.submission_id && (
                         <button
                           onClick={() => setEditingSubmission(submission.submission_id)}
                           className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500"
