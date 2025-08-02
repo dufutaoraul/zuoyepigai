@@ -76,13 +76,10 @@ export async function POST(request: NextRequest) {
 async function getGraduationProgressFromDB(studentId: string) {
   const sb = await getSupabase();
   
-  // 直接从数据库查询该学员的所有合格作业提交记录
+  // 先查询该学员的所有合格作业提交记录
   const { data: submissions, error } = await sb
     .from('submissions')
-    .select(`
-      *,
-      assignment:assignments(*)
-    `)
+    .select('*')
     .eq('学号', studentId)
     .eq('毕业合格统计', '合格');
 
@@ -100,6 +97,26 @@ async function getGraduationProgressFromDB(studentId: string) {
 
   console.log(`找到 ${submissions.length} 个合格的作业提交记录`);
   
+  // 获取所有相关的作业信息
+  const assignmentIds = submissions.map(s => s.assignment_id);
+  const { data: assignments, error: assignmentError } = await sb
+    .from('assignments')
+    .select('*')
+    .in('assignment_id', assignmentIds);
+
+  if (assignmentError) {
+    console.error('查询作业信息失败:', assignmentError);
+    throw new Error('查询作业信息失败');
+  }
+
+  // 创建作业信息映射
+  const assignmentMap = new Map();
+  if (assignments) {
+    assignments.forEach(assignment => {
+      assignmentMap.set(assignment.assignment_id, assignment);
+    });
+  }
+  
   // 分析已完成的作业
   let mandatoryCompletedCount = 0;
   let w1d2AfternoonCompletedCount = 0;  
@@ -111,7 +128,7 @@ async function getGraduationProgressFromDB(studentId: string) {
   const missingMandatoryTasks = [...MANDATORY_TASKS];
 
   for (const submission of submissions) {
-    const assignment = submission.assignment;
+    const assignment = assignmentMap.get(submission.assignment_id);
     if (!assignment) continue;
 
     const taskName = assignment.assignment_title;

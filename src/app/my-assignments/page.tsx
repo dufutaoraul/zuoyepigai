@@ -49,16 +49,43 @@ function MyAssignmentsContent() {
     
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // 先查询提交记录
+      const { data: submissionsData, error: submissionsError } = await supabase
         .from('submissions')
-        .select(`
-          *,
-          assignment:assignments(*)
-        `)
+        .select('*')
         .eq('学号', id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (submissionsError) throw submissionsError;
+      
+      if (!submissionsData || submissionsData.length === 0) {
+        setSubmissions([]);
+        setMessage('暂无作业提交记录');
+        return;
+      }
+
+      // 获取所有相关的作业信息
+      const assignmentIds = submissionsData.map(s => s.assignment_id);
+      const { data: assignmentsData, error: assignmentsError } = await supabase
+        .from('assignments')
+        .select('*')
+        .in('assignment_id', assignmentIds);
+
+      if (assignmentsError) throw assignmentsError;
+
+      // 创建作业信息映射
+      const assignmentMap = new Map();
+      if (assignmentsData) {
+        assignmentsData.forEach(assignment => {
+          assignmentMap.set(assignment.assignment_id, assignment);
+        });
+      }
+
+      // 合并数据
+      const data = submissionsData.map(submission => ({
+        ...submission,
+        assignment: assignmentMap.get(submission.assignment_id)
+      }));
       
       setSubmissions(data || []);
       if (data?.length === 0) {
