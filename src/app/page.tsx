@@ -8,7 +8,7 @@ export default function HomePage() {
       <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-16">
           <h1 className="text-4xl font-bold text-gray-800 mb-4">
-            在线学习与作业管理平台
+            爱学AI创富实训营自动作业批改审核系统
           </h1>
           <p className="text-xl text-gray-600">
             智能化作业提交、批改和毕业资格审核
