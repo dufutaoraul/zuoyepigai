@@ -173,6 +173,10 @@ export default function SubmitAssignmentPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       setFiles(Array.from(e.target.files));
+      // 用户重新选择文件时，清空上一次的批改结果
+      setMessage('');
+      setGradingResult(null);
+      setShowResult(false);
     }
   };
 
