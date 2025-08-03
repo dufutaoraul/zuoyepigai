@@ -462,13 +462,13 @@ function MyAssignmentsContent() {
                     
                     {/* 操作按钮行 */}
                     <div className="flex gap-2 flex-wrap">
-                      {/* 重新提交按钮 - 仅当状态为不合格或批改失败且未在编辑时显示 */}
+                      {/* 修改作业按钮 - 仅当状态为不合格或批改失败且未在编辑时显示 */}
                       {((submission['毕业合格统计'] || submission.status) === '不合格' || (submission['毕业合格统计'] || submission.status) === '批改失败') && editingSubmission !== submission.submission_id && (
                         <button
                           onClick={() => setEditingSubmission(submission.submission_id)}
                           className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500"
                         >
-                          重新提交
+                          修改作业
                         </button>
                       )}
                       
@@ -484,6 +484,24 @@ function MyAssignmentsContent() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* 毕业资格状态显示 */}
+          {submissions.length > 0 && studentId && (
+            <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-blue-800 mb-4">📋 毕业资格状态</h3>
+              <div className="flex justify-between items-center">
+                <p className="text-blue-700">
+                  想了解您的毕业资格吗？点击查看详细的毕业条件检查结果。
+                </p>
+                <a
+                  href={`/graduation-check?studentId=${studentId}`}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                >
+                  查看毕业资格
+                </a>
+              </div>
             </div>
           )}
         </div>
