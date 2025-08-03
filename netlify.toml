@@ -6,9 +6,9 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# Functions 配置 - 增加超时时间处理网络延迟
-[functions]
-  timeout = 30  # 从默认10秒增加到30秒，处理国内网络延迟
+# Functions 配置 - 增加超时时间处理网络延迟  
+[functions."*"]
+  timeout = 30
 
 # Headers 配置
 [[headers]]
