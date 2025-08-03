@@ -304,7 +304,7 @@ export default function SubmitAssignmentPage() {
       console.log('FormData构建完成，开始上传...');
 
       // 文件上传重试函数
-      const uploadWithRetry = async (formData: FormData, maxRetries = 3, timeout = 25000) => {
+      const uploadWithRetry = async (formData: FormData, maxRetries = 3, timeout = 25000): Promise<Response> => {
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
             console.log(`第${attempt}次上传尝试 (共${maxRetries}次)`);
@@ -339,6 +339,9 @@ export default function SubmitAssignmentPage() {
             await new Promise(resolve => setTimeout(resolve, waitTime));
           }
         }
+        
+        // TypeScript需要这个，虽然上面的逻辑确保不会到这里
+        throw new Error('上传失败：所有重试都已用完');
       };
 
       const uploadResponse = await uploadWithRetry(formData);
