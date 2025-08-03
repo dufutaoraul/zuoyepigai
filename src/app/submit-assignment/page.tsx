@@ -17,6 +17,7 @@ export default function SubmitAssignmentPage() {
   const [availableDays, setAvailableDays] = useState<string[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false); // 标记是否已提交成功
   const [message, setMessage] = useState('');
   const [gradingResult, setGradingResult] = useState<{status: string, feedback: string} | null>(null);
   const [showResult, setShowResult] = useState(false);
@@ -384,12 +385,14 @@ export default function SubmitAssignmentPage() {
         console.error('Error triggering AI grading:', error);
       }
 
-      setMessage('作业提交成功！正在进行AI批改，请耐心等待...');
+      setSubmitted(true); // 标记为已提交成功
       
       // 开始轮询检查批改结果
       await pollGradingResult(studentId, assignmentId);
       
       // 批改完成后重置表单状态
+      setLoading(false);
+      setSubmitted(false);
       setFiles([]);
       setStudentId('');
       setStudentName('');
@@ -403,6 +406,7 @@ export default function SubmitAssignmentPage() {
       setMessage(`提交失败: ${errorMessage}，请重试`);
     } finally {
       setLoading(false);
+      setSubmitted(false);
     }
   };
 
@@ -622,12 +626,12 @@ export default function SubmitAssignmentPage() {
                 disabled={loading}
                 className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? '作业提交中，请耐心等待，不会超过1分钟。' : '提交作业'}
+                {loading ? (submitted ? '作业提交成功！正在进行AI批改，请耐心等待，不会超过2分钟' : '作业提交中，请耐心等待，不会超过1分钟。') : '提交作业'}
               </button>
             </form>
 
-            {/* 消息显示 */}
-            {message && (
+            {/* 消息显示 - 只显示错误和最终结果 */}
+            {message && !loading && (
               <div className={`mt-4 p-4 rounded-md ${
                 message.includes('成功') || message.includes('完成')
                   ? 'bg-green-100 text-green-800' 
