@@ -276,7 +276,10 @@ export default function SubmitAssignmentPage() {
     }
 
     setLoading(true);
+    // 清空上一次的批改结果和消息
     setMessage('');
+    setGradingResult(null);
+    setShowResult(false);
 
     try {
       console.log('开始提交作业:', { studentId, assignmentId, fileCount: files.length });
@@ -390,12 +393,11 @@ export default function SubmitAssignmentPage() {
       // 开始轮询检查批改结果
       await pollGradingResult(studentId, assignmentId);
       
-      // 批改完成后重置表单状态
+      // 批改完成后重置表单状态，但保留用户信息
       setLoading(false);
       setSubmitted(false);
       setFiles([]);
-      setStudentId('');
-      setStudentName('');
+      // 保留 studentId 和 studentName，让用户继续提交其他作业
       setSelectedDayText('');
       setAssignmentId('');
       setSelectedAssignment(null);
