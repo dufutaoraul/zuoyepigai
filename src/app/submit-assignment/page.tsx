@@ -622,7 +622,7 @@ export default function SubmitAssignmentPage() {
                 disabled={loading}
                 className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? (showResult ? '批改完成' : '正在批改作业，请稍候...') : '提交作业'}
+                {loading ? '作业提交中，请耐心等待，不会超过1分钟。' : '提交作业'}
               </button>
             </form>
 
