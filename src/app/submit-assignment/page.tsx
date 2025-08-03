@@ -303,7 +303,51 @@ export default function SubmitAssignmentPage() {
 
       console.log('FormData构建完成，开始上传...');
 
-      // 文件上传重试函数
+      // 直接上传到Cloudflare R2，绕过Netlify Functions限制
+      const uploadToR2Directly = async (files: File[]): Promise<string[]> => {
+        const uploadedUrls: string[] = [];
+        
+        for (const file of files) {
+          try {
+            console.log(`开始上传文件: ${file.name}`);
+            
+            // 获取预签名URL
+            const presignResponse = await fetch('/api/get-presigned-url', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ fileName: file.name, fileType: file.type })
+            });
+            
+            if (!presignResponse.ok) {
+              throw new Error('获取上传URL失败');
+            }
+            
+            const { uploadUrl, publicUrl } = await presignResponse.json();
+            
+            // 直接上传到R2
+            const uploadResponse = await fetch(uploadUrl, {
+              method: 'PUT',
+              body: file,
+              headers: { 'Content-Type': file.type }
+            });
+            
+            if (!uploadResponse.ok) {
+              throw new Error(`文件上传失败: ${uploadResponse.status}`);
+            }
+            
+            uploadedUrls.push(publicUrl);
+            console.log(`文件上传成功: ${file.name}`);
+            
+          } catch (error) {
+            console.error(`文件上传失败: ${file.name}`, error);
+            throw error;
+          }
+        }
+        
+        return uploadedUrls;
+      };
+
+      // 文件上传重试函数（保留作为备用）
       const uploadWithRetry = async (formData: FormData, maxRetries = 2, timeout = 50000): Promise<Response> => {
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
@@ -344,14 +388,23 @@ export default function SubmitAssignmentPage() {
         throw new Error('上传失败：所有重试都已用完');
       };
 
-      const uploadResponse = await uploadWithRetry(formData);
-      console.log('上传响应状态:', uploadResponse.status, uploadResponse.statusText);
+      // 尝试直接上传到R2，失败时使用原有方式
+      let attachmentUrls: string[];
+      try {
+        console.log('尝试直接上传到R2...');
+        attachmentUrls = await uploadToR2Directly(files);
+        console.log('R2直接上传成功，文件URLs:', attachmentUrls);
+      } catch (r2Error) {
+        console.log('R2直接上传失败，降级使用Netlify Functions:', r2Error);
+        
+        const uploadResponse = await uploadWithRetry(formData);
+        console.log('上传响应状态:', uploadResponse.status, uploadResponse.statusText);
 
-      if (!uploadResponse.ok) {
-        let errorData;
-        try {
-          errorData = await uploadResponse.json();
-          console.log('上传错误详情:', errorData);
+        if (!uploadResponse.ok) {
+          let errorData;
+          try {
+            errorData = await uploadResponse.json();
+            console.log('上传错误详情:', errorData);
         } catch (parseError) {
           console.log('无法解析错误响应，原始响应:', await uploadResponse.text());
           // 检查是否是400错误（可能是文件大小超限）
@@ -373,10 +426,11 @@ export default function SubmitAssignmentPage() {
         }
         
         throw new Error(`文件上传失败: ${errorData.error || '未知错误'}`);
-      }
+        }
 
-      const uploadResult = await uploadResponse.json();
-      const attachmentUrls: string[] = uploadResult.urls;
+        const uploadResult = await uploadResponse.json();
+        attachmentUrls = uploadResult.urls;
+      }
 
       console.log('文件上传完成:', { attachmentUrls });
 
