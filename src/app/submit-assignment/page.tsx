@@ -303,8 +303,24 @@ export default function SubmitAssignmentPage() {
           console.log('上传错误详情:', errorData);
         } catch (parseError) {
           console.log('无法解析错误响应，原始响应:', await uploadResponse.text());
+          // 检查是否是400错误（可能是文件大小超限）
+          if (uploadResponse.status === 400) {
+            const totalSizeMB = files.reduce((total, file) => total + file.size, 0) / 1024 / 1024;
+            if (totalSizeMB > 6) {
+              throw new Error(`您提交的图片总大小超过了6MB（当前${totalSizeMB.toFixed(2)}MB），请修改图片大小后重新上传。`);
+            }
+          }
           throw new Error(`文件上传失败: HTTP ${uploadResponse.status}`);
         }
+        
+        // 如果能解析到错误信息，也检查文件大小
+        if (uploadResponse.status === 400) {
+          const totalSizeMB = files.reduce((total, file) => total + file.size, 0) / 1024 / 1024;
+          if (totalSizeMB > 6) {
+            throw new Error(`您提交的图片总大小超过了6MB（当前${totalSizeMB.toFixed(2)}MB），请修改图片大小后重新上传。`);
+          }
+        }
+        
         throw new Error(`文件上传失败: ${errorData.error || '未知错误'}`);
       }
 
@@ -362,10 +378,20 @@ export default function SubmitAssignmentPage() {
         console.error('Error triggering AI grading:', error);
       }
 
-      setMessage('作业提交成功！正在进行AI批改，大概需要1-2分钟时间，请耐心等待。您可以返回首页继续提交其他作业，或查看已有作业记录。');
+      // 重置表单状态
+      setFiles([]);
+      setStudentId('');
+      setStudentName('');
+      setSelectedDayText('');
+      setAssignmentId('');
+      setSelectedAssignment(null);
       
-      // 开始轮询检查批改结果
-      await pollGradingResult(studentId, assignmentId);
+      setMessage('作业提交成功！正在进行AI批改，大概需要1-2分钟时间。您可以返回首页继续提交其他作业，或查看已有作业记录。');
+      
+      // 不再自动轮询，让用户自己去查询页面查看结果
+      setTimeout(() => {
+        setMessage('作业已提交成功！您可以前往"查询我的作业"页面查看批改结果。');
+      }, 3000);
       
     } catch (error) {
       console.error('Error submitting assignment:', error);
@@ -528,9 +554,22 @@ export default function SubmitAssignmentPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
-                <p className="text-sm text-gray-500 mt-1">
-                  支持上传多张图片，格式：JPG、PNG、GIF等
-                </p>
+                <div className="mt-2">
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-2">
+                    <div className="flex items-center">
+                      <div className="text-2xl mr-2">⚠️</div>
+                      <div>
+                        <p className="text-sm font-medium text-yellow-800">重要提醒</p>
+                        <p className="text-sm text-yellow-700">
+                          请确保提交的图片总大小不超过 <strong>6MB</strong>，否则上传会失败
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    支持上传多张图片，格式：JPG、PNG、GIF等
+                  </p>
+                </div>
                 
                 {/* 显示已选择的文件 */}
                 {files.length > 0 && (
@@ -543,6 +582,32 @@ export default function SubmitAssignmentPage() {
                         </li>
                       ))}
                     </ul>
+                    
+                    {/* 总文件大小显示和警告 */}
+                    {(() => {
+                      const totalSizeMB = files.reduce((total, file) => total + file.size, 0) / 1024 / 1024;
+                      const isOverLimit = totalSizeMB > 6;
+                      
+                      return (
+                        <div className={`mt-2 p-2 rounded text-sm ${
+                          isOverLimit 
+                            ? 'bg-red-100 text-red-800 border border-red-200' 
+                            : 'bg-green-100 text-green-800 border border-green-200'
+                        }`}>
+                          <strong>总大小: {totalSizeMB.toFixed(2)} MB</strong>
+                          {isOverLimit && (
+                            <div className="mt-1">
+                              ❌ 超出6MB限制！请删除部分文件或压缩图片后重新选择
+                            </div>
+                          )}
+                          {!isOverLimit && (
+                            <div className="mt-1">
+                              ✅ 文件大小符合要求
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
@@ -553,7 +618,7 @@ export default function SubmitAssignmentPage() {
                 disabled={loading}
                 className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? '作业提交中，请耐心等待，不会超过1分钟。' : '提交作业'}
+                {loading ? '正在提交作业...' : '提交作业'}
               </button>
             </form>
 

@@ -22,7 +22,7 @@ function MyAssignmentsContent() {
   const [deletingSubmission, setDeletingSubmission] = useState<string | null>(null);
   const [keepExistingFiles, setKeepExistingFiles] = useState(true);
 
-  // 初始化时读取URL参数或localStorage
+  // 初始化时读取URL参数或localStorage，但不自动查询
   useEffect(() => {
     const urlStudentId = searchParams.get('studentId');
     const savedStudentId = localStorage.getItem('lastStudentId');
@@ -30,11 +30,10 @@ function MyAssignmentsContent() {
     if (urlStudentId) {
       setStudentId(urlStudentId);
       localStorage.setItem('lastStudentId', urlStudentId);
-      // 自动查询
-      fetchSubmissionsWithId(urlStudentId);
+      // 移除自动查询，让用户手动点击查询按钮
     } else if (savedStudentId) {
       setStudentId(savedStudentId);
-      fetchSubmissionsWithId(savedStudentId);
+      // 移除自动查询，让用户手动点击查询按钮
     }
   }, [searchParams]);
 
