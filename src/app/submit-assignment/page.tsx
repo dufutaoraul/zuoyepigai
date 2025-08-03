@@ -200,12 +200,11 @@ export default function SubmitAssignmentPage() {
         
         const { data, error } = await supabase
           .from('submissions')
-          .select('毕业合格统计, AI的作业评估, created_at')
+          .select('毕业合格统计, AI的作业评估, created_at, xmin')
           .eq('学号', studentId)
           .eq('assignment_id', assignmentId)
           .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+          .limit(1);
         
         if (error) {
           console.error('查询批改结果出错:', error);
@@ -214,21 +213,28 @@ export default function SubmitAssignmentPage() {
         
         console.log('查询到的数据:', data);
         
-        if (data && (data as any)['毕业合格统计'] !== '待评估') {
-          // 批改完成或失败
-          console.log('批改完成，状态:', (data as any)['毕业合格统计']);
-          setGradingResult({
-            status: (data as any)['毕业合格统计'],
-            feedback: (data as any)['AI的作业评估'] || '批改完成'
-          });
-          setShowResult(true);
-          if ((data as any)['毕业合格统计'] === '批改失败') {
-            setMessage(`批改失败：${(data as any)['AI的作业评估']}`);
-          } else {
-            setMessage(`批改完成！结果：${(data as any)['毕业合格统计']}`);
+        if (data && data.length > 0) {
+          const latestRecord = data[0] as any;
+          console.log('最新记录:', latestRecord);
+          
+          if (latestRecord['毕业合格统计'] !== '待评估') {
+            // 批改完成或失败
+            console.log('批改完成，状态:', latestRecord['毕业合格统计']);
+            setGradingResult({
+              status: latestRecord['毕业合格统计'],
+              feedback: latestRecord['AI的作业评估'] || '批改完成'
+            });
+            setShowResult(true);
+            if (latestRecord['毕业合格统计'] === '批改失败') {
+              setMessage(`批改失败：${latestRecord['AI的作业评估']}`);
+            } else {
+              setMessage(`批改完成！结果：${latestRecord['毕业合格统计']}`);
+            }
+            resolve(); // 完成Promise
+            return;
           }
-          resolve(); // 完成Promise
-          return;
+        } else {
+          console.log('没有找到匹配的记录，继续轮询...');
         }
         
         // 如果还在批改中，继续轮询
@@ -378,20 +384,18 @@ export default function SubmitAssignmentPage() {
         console.error('Error triggering AI grading:', error);
       }
 
-      // 重置表单状态
+      setMessage('作业提交成功！正在进行AI批改，请耐心等待...');
+      
+      // 开始轮询检查批改结果
+      await pollGradingResult(studentId, assignmentId);
+      
+      // 批改完成后重置表单状态
       setFiles([]);
       setStudentId('');
       setStudentName('');
       setSelectedDayText('');
       setAssignmentId('');
       setSelectedAssignment(null);
-      
-      setMessage('作业提交成功！正在进行AI批改，大概需要1-2分钟时间。您可以返回首页继续提交其他作业，或查看已有作业记录。');
-      
-      // 不再自动轮询，让用户自己去查询页面查看结果
-      setTimeout(() => {
-        setMessage('作业已提交成功！您可以前往"查询我的作业"页面查看批改结果。');
-      }, 3000);
       
     } catch (error) {
       console.error('Error submitting assignment:', error);
@@ -618,7 +622,7 @@ export default function SubmitAssignmentPage() {
                 disabled={loading}
                 className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? '正在提交作业...' : '提交作业'}
+                {loading ? (showResult ? '批改完成' : '正在批改作业，请稍候...') : '提交作业'}
               </button>
             </form>
 
