@@ -303,11 +303,45 @@ export default function SubmitAssignmentPage() {
 
       console.log('FormData构建完成，开始上传...');
 
-      const uploadResponse = await fetch('/api/upload-files', {
-        method: 'POST',
-        body: formData
-      });
+      // 文件上传重试函数
+      const uploadWithRetry = async (formData: FormData, maxRetries = 3, timeout = 25000) => {
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            console.log(`第${attempt}次上传尝试 (共${maxRetries}次)`);
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+            
+            const response = await fetch('/api/upload-files', {
+              method: 'POST',
+              body: formData,
+              signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (response.ok) {
+              console.log(`第${attempt}次上传成功`);
+              return response;
+            } else {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+          } catch (error) {
+            console.log(`第${attempt}次上传失败:`, error);
+            
+            if (attempt === maxRetries) {
+              throw new Error(`上传失败，已重试${maxRetries}次：${error instanceof Error ? error.message : '网络错误'}`);
+            }
+            
+            // 等待后重试
+            const waitTime = attempt * 2000; // 递增等待时间：2s, 4s, 6s
+            console.log(`等待${waitTime}ms后重试...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+          }
+        }
+      };
 
+      const uploadResponse = await uploadWithRetry(formData);
       console.log('上传响应状态:', uploadResponse.status, uploadResponse.statusText);
 
       if (!uploadResponse.ok) {
@@ -577,6 +611,9 @@ export default function SubmitAssignmentPage() {
                         <p className="text-sm text-yellow-700">
                           请确保提交的图片总大小不超过 <strong>6MB</strong>，否则上传会失败
                         </p>
+                        <p className="text-sm text-yellow-600 mt-1">
+                          💡 国内网络环境下上传需要 <strong>20-30秒</strong>，请耐心等待
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -632,7 +669,7 @@ export default function SubmitAssignmentPage() {
                 disabled={loading}
                 className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? (submitted ? '作业提交成功！正在进行AI批改，请耐心等待，不会超过2分钟' : '作业提交中，请耐心等待，不会超过1分钟。') : '提交作业'}
+                {loading ? (submitted ? '作业提交成功！正在进行AI批改，请耐心等待，不会超过2分钟' : '作业提交中，请耐心等待，国内网络需要20-30秒') : '提交作业'}
               </button>
             </form>
 
